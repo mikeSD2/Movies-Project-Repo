@@ -1,0 +1,66 @@
+# Node / Vite / Vue
+node_modules/
+dist/
+.vite/
+.npm-cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Среды/секреты
+.env
+.env.*
+config.env
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Логи
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.*
+htmlcov/
+
+# Загруженные/временные данные
+uploads/
+server-data/
+chrome_profile/
+
+# Генерируемые/временные файлы
+movies-data.json
+movies-data.json.*
+kinopoisk_movies_*.txt
+progress.json
+progress_last_movies.json
+*.bak
+*.backup
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+
+# Отладочные HTML
+debug_*.html
+captcha_page_*.html
+
+# Архивы
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
