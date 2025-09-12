@@ -733,6 +733,285 @@ async function createServerApp() {
         translation: req.query.translation,
         actor: req.query.actor,
         special: req.query.special,
+      };
+
+      const feed = getCategoryFeed(data, opts);
+      res.json(feed);
+    } catch (e) {
+      res.status(500).json({ items: [], total: 0, totalPages: 1 });
+    }
+  });
+
+  // Top list
+  app.get("/api/top", async (req, res) => {
+    try {
+      const data = await readData();
+      const limit = Math.max(
+        1,
+        Math.min(200, parseInt(req.query.limit, 10) || 24)
+      );
+      const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+      const type = String(req.query.type || "all");
+      const result = getTopFeedPaged(data, { limit, offset, type });
+      res.json(result);
+    } catch {
+      res.status(500).json({ items: [], total: 0 });
+    }
+  });
+
+  // Related movies for a given id (lightweight for hard-reload cases)
+  app.get("/api/related/:id", async (req, res) => {
+    try {
+      const data = await readData();
+      const id = String(req.params.id);
+      const list = data?.movies || [];
+      const cur = list.find((m) => m.id === id);
+      if (!cur) return res.json({ items: [] });
+
+      const items = list
+        .filter(
+          (m) =>
+            m.id !== id &&
+            m.category === cur.category &&
+            Array.isArray(m.genres) &&
+            Array.isArray(cur.genres) &&
+            m.genres.some((g) => cur.genres.includes(g))
+        )
+        .slice(0, 6)
+        .map((m) => ({
+          id: m.id,
+          category: m.category,
+          title: m.title,
+          year: m.year,
+          image: m.image,
+          kpRating: m.kpRating,
+          imdbRating: m.imdbRating,
+          genres: m.genres,
+        }));
+
+      res.json({ items });
+    } catch {
+      res.status(500).json({ items: [] });
+    }
+  });
+
+  // GET /api/movies — список с пагинацией и фильтрами
+  // /api/movies?category=filmy&page=1&limit=24&year=2024&genre=Драма&country=Турция&sort=rating
+  app.get("/api/movies", async (req, res) => {
+    const {
+      category = "",
+      page = 1,
+      limit = 24,
+      year,
+      genre,
+      country,
+      q,
+      sort,
+    } = req.query;
+    const data = await readData();
+    let list = (data?.movies || []).filter((m) => m.id !== "index");
+
+    if (category) list = list.filter((m) => m.category === String(category));
+    if (year) list = list.filter((m) => String(m.year) === String(year));
+    if (genre)
+      list = list.filter((m) => (m.genres || []).includes(String(genre)));
+    if (country)
+      list = list.filter((m) =>
+        (m.country || "").toLowerCase().includes(String(country).toLowerCase())
+      );
+    if (q) {
+      const s = String(q).toLowerCase();
+      const actors = (v) =>
+        Array.isArray(v)
+          ? v.join(",").toLowerCase()
+          : String(v || "").toLowerCase();
+      list = list.filter(
+        (m) =>
+          String(m.title || "")
+            .toLowerCase()
+            .includes(s) ||
+          String(m.originalTitle || "")
+            .toLowerCase()
+            .includes(s) ||
+          actors(m.actors).includes(s)
+      );
+    }
+    if (sort === "rating") {
+      const rating = (m) => {
+        const i = parseFloat(String(m.imdbRating || "").replace(",", ".")) || 0;
+        const k = parseFloat(String(m.kpRating || "").replace(",", ".")) || 0;
+        return Math.max(i, k);
+      };
+      list = list
+        .map((m) => ({ m, r: rating(m) }))
+        .filter((x) => x.r > 0)
+        .sort((a, b) => b.r - a.r)
+        .map((x) => x.m);
+    } else if (sort === "popularity") {
+      list = list.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    } else if (sort === "new") {
+      list = list.sort((a, b) => (b.year || 0) - (a.year || 0));
+    }
+
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const L = Math.max(1, Math.min(100, parseInt(limit, 10) || 24));
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / L));
+    const items = list.slice((p - 1) * L, (p - 1) * L + L).map((m) => ({
+      // верни «карточочные» поля, без тяжёлых описаний — легче клиенту
+      id: m.id,
+      category: m.category,
+      title: m.title,
+      year: m.year,
+      image: m.image,
+      kpRating: m.kpRating,
+      imdbRating: m.imdbRating,
+      genres: m.genres,
+      country: m.country,
+      premiere: m.premiere,
+      season: m.season,
+      episode: m.episode,
+    }));
+
+    res.json({
+      items,
+      page: p,
+      total,
+      totalPages,
+      categories: data?.categories || {},
+    });
+  });
+
+  app.get("/api/search-suggestions", async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || q.length < 1) {
+        return res.json([]);
+      }
+  async function saveRatingsForMovie(movieId, ratings) {
+    const store = await getRatingsStore();
+    store[movieId] = ratings;
+    await setRatingsStore(store);
+    return ratings;
+  }
+
+  async function verifyRecaptcha(token, secretKey) {
+    const url = "https://www.google.com/recaptcha/api/siteverify";
+
+    try {
+      const response = await axios.post(url, null, {
+        params: {
+          secret: secretKey,
+          response: token,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error verifying reCAPTCHA:", error);
+      return { success: false, "error-codes": ["request-failed"] };
+    }
+  }
+
+  app.get("/api/movies-data", async (req, res) => {
+    try {
+      const data = await readData();
+      res.json(data || { movies: [], categories: {} });
+    } catch (e) {
+      res.status(500).json({ movies: [], categories: {} });
+    }
+  });
+
+  app.get("/api/search", async (req, res) => {
+    try {
+      const q = String(req.query.q || "").toLowerCase();
+      if (!q) return res.json([]);
+      const data = await readData();
+
+      const norm = (v) => String(v ?? "").toLowerCase();
+      const normActors = (v) =>
+        Array.isArray(v)
+          ? v.join(", ").toLowerCase()
+          : String(v ?? "").toLowerCase();
+
+      const found = (data.movies || [])
+        .filter(
+          (m) =>
+            m.id !== "index" &&
+            !isRecentPremiere(m) &&
+            (norm(m.title).includes(q) ||
+              norm(m.originalTitle).includes(q) ||
+              norm(m.description).includes(q) ||
+              normActors(m.actors).includes(q))
+        )
+        .slice(0, 200)
+        .map((m) => ({
+          id: m.id,
+          category: m.category,
+          title: m.title,
+          year: m.year,
+          image: m.image,
+          kpRating: m.kpRating,
+          imdbRating: m.imdbRating,
+        }));
+      res.json(found);
+    } catch (e) {
+      res.status(500).json([]);
+    }
+  });
+
+  // GET /api/movie/:id — один фильм
+  app.get("/api/movie/:id", async (req, res) => {
+    const data = await readData();
+    const m = (data?.movies || []).find((x) => x.id === req.params.id);
+    if (!m) return res.status(404).json({ error: "not_found" });
+    res.json({ movie: m, categories: data?.categories || {} });
+  });
+
+  // Home feed for landing page
+  app.get("/api/home-feed", async (req, res) => {
+    try {
+      const data = await readData();
+      res.json(getHomeFeed(data));
+    } catch {
+      res.status(500).json({ popular: [], sections: {} });
+    }
+  });
+
+  app.get("/api/movie-full/:id", async (req, res) => {
+    try {
+      const data = await readData();
+      const payload = buildMoviePayload(data, String(req.params.id));
+      if (!payload) return res.status(404).json({ error: "not_found" });
+      res.json(payload);
+    } catch {
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  app.get("/api/category", async (req, res) => {
+    try {
+      const data = await readData();
+      const name = String(req.query.name || "").trim();
+      if (!name) return res.status(400).json({ error: "missing name" });
+
+      const limit = Math.max(
+        1,
+        Math.min(200, parseInt(req.query.limit, 10) || 24)
+      );
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const sort = String(req.query.sort || "year");
+
+      const opts = {
+        name,
+        page,
+        limit,
+        sort,
+        year: req.query.year,
+        genre: req.query.genre,
+        country: req.query.country,
+        translation: req.query.translation,
+        actor: req.query.actor,
+        special: req.query.special,
         home: String(req.query.home || "") === "1",
       };
 
