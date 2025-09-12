@@ -9,6 +9,35 @@ import asyncio
 from ddgs import DDGS
 import sys
 from collections import deque
+import signal
+import tempfile
+
+# --- ГРЕЙСФУЛ ШАТДАУН ---
+shutdown_requested = False
+
+def handle_shutdown_signal(signum, frame):
+    """Обработчик сигналов для чистого выхода."""
+    global shutdown_requested
+    if not shutdown_requested:
+        print("\nСигнал остановки получен. Завершаю текущую задачу и сохраняюсь...")
+        shutdown_requested = True
+    else:
+        print("\nПовторный сигнал. Принудительный выход.")
+        sys.exit(1)
+
+signal.signal(signal.SIGINT, handle_shutdown_signal)
+signal.signal(signal.SIGTERM, handle_shutdown_signal)
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ NDJSON ---
+def append_to_ndjson(filename, item_data):
+    """Дописывает один объект в NDJSON файл атомарно."""
+    try:
+        # Сначала формируем полную строку, затем пишем за один вызов
+        line_to_write = json.dumps(item_data, ensure_ascii=False, separators=(',', ':')) + '\n'
+        with open(filename, 'a', encoding='utf-8') as f:
+            f.write(line_to_write)
+    except IOError as e:
+        print(f"  - !!! Ошибка записи в {filename}: {e}")
 
 # --- КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 
@@ -19,7 +48,8 @@ GEMINI_API_KEY = "AIzaSyCI0qt3OOliBaM_QOztawFqmBMo5AGw_kY"
 # URL и пути
 LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/movie'
 DETAILS_BASE_URL = 'https://api.themoviedb.org/3/movie/'
-OUTPUT_FILE = 'movies-data.json'
+JSON_DATA_FILE = 'movies-data.json'
+NDJSON_OUTPUT_FILE = 'movies-data.ndjson'
 UPLOADS_DIR = 'uploads/posts'
 
 # рядом с остальными URL/путями
@@ -118,22 +148,33 @@ def wait_for_rate_slot(model_idx: int):
         time.sleep(sleep_for)
 
 def rewrite_description_sync(description: str) -> str | None:
+    """
+    Отправляет описание в Gemini API.
+    В случае неудачи повторяет попытки, меняя модели, до успешного выполнения.
+    Возвращает None, если контент заблокирован API.
+    """
     global current_model_index, last_429_at
     if not description: return ""
 
     prompt = (
-        "Перепиши пожалуйста это описание фильма так чтобы оно звучало проще без эпитетов метафор и поэтичности. Убери все лишнее и оставь описание сюжета в вормате или 'Сюжет разворачивается вокруг...' или 'В центре повествования находится...' или 'Это история о...' или 'История вращается вокруг...' или 'Главный герой этой истории ...' и тому подобное. Чтобы было просто но интригующе чтобы заитересовать человека к просмотру. "
+        "Перепиши пожалуйста это описание фильма так чтобы оно звучало просто, без эпитетов, метафор и поэтичности. Описание сюжета должно быть в формате или 'Сюжет разворачивается вокруг...' или 'В центре повествования находится...' или 'Это история о...' или 'История вращается вокруг...' или 'Главный герой этой истории ...' и тому подобное. Чтобы было просто, но интригующе чтобы заитересовать человека к просмотру. "
         "Текст:\n" f'"{description}\n"'
-        "Текст должен быть размером от 400 до 1000 символов примерно и уникальность ОБЯЗАТЕЛЬНО должна быть БОЛЕЕ 90% поэтому ВАЖНО чтобы ты старался использовать перефразирование и синонимы (особенно в первом абзаце) где они уместны и не делают текст странны."
-        "Очень важно чтобы ты не давал никаких предисловий и послесловий к тексту который был тобой переписан, должен быть только переписаный текст согласно тому как я сказал."
+        "Изо всех сил старайся довести колличество символов до 1000 не выдумывая и не повторяя уже сказанное, но пытаясь писать развернуто чтобы получилось одно целостное описание фильма. Уникальность итогового текста ОБЯЗАТЕЛЬНО должна быть БОЛЕЕ 90% поэтому ВАЖНО чтобы ты старался использовать перефразирование и синонимы (особенно в первом абзаце) где они уместны и не делают текст странным."
+        "Очень важно чтобы ты не давал никаких предисловий по типу 'Вот переписанный текст:' и послесловий к тексту который был тобой переписан, должен быть только переписаный текст согласно тому как я сказал."
     )
     payload = {"contents": [{"parts":[{"text": prompt}]}]}
     headers = {'Content-Type': 'application/json'}
 
     while True:
+        if shutdown_requested:
+            print("    - Операция рерайта прервана из-за сигнала остановки.")
+            return ""
+
         if current_model_index >= len(MODELS):
-            print("\nЛимиты всех доступных моделей исчерпаны. Рерайт невозможен.")
-            return None
+            print("\nЛимиты всех доступных моделей исчерпаны. Сбрасываем и ждем 5 минут...")
+            current_model_index = 0
+            time.sleep(300)
+            continue
 
         model_name = MODELS[current_model_index]
         url = get_current_url()
@@ -152,11 +193,13 @@ def rewrite_description_sync(description: str) -> str | None:
             
             if 'promptFeedback' in data and 'blockReason' in data['promptFeedback']:
                 reason = data['promptFeedback']['blockReason']
-                print(f"    - Контент заблокирован (причина: {reason}). Рерайт не удался.")
+                print(f"    - Контент заблокирован (причина: {reason}). Рерайт невозможен, фильм будет пропущен.")
                 return None
 
-            print("    - Не удалось извлечь текст (неизвестная структура ответа). Рерайт не удался.")
-            return None
+            print("    - Не удалось извлечь текст (неизвестная структура ответа). Переключение модели и пауза 15с...")
+            current_model_index += 1
+            time.sleep(15)
+            continue
 
         except requests.exceptions.RequestException as e:
             if e.response is not None:
@@ -411,22 +454,64 @@ def fetch_page_current_month(api_key, page, media_type='movie'):
     return None
 
 def get_details(api_key, media_id, media_type='movie'):
+    """
+    Получает детальную информацию о фильме или сериале с надежным механизмом повторных попыток.
+    """
+    max_short_retries = 5
+    short_retry_delay = 10  # seconds
+    long_retry_delay = 60   # seconds
+
     params = {
         'api_key': api_key,
         'language': 'ru-RU',
         'append_to_response': 'credits,videos'
     }
     base_url = DETAILS_BASE_URL if media_type == 'movie' else TV_DETAILS_BASE_URL
-    try:
-        url = f"{base_url}{media_id}"
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        print(f"Ошибка при получении деталей для {media_type} ID {media_id}: {e}")
-        return None
+    url = f"{base_url}{media_id}"
+
+    attempt = 0
+    while not shutdown_requested:
+        attempt += 1
+        
+        try:
+            response = requests.get(url, params=params, timeout=20)
+            response.raise_for_status()
+            
+            if attempt > 1:
+                print(f"  - Детали для {media_type} ID {media_id} успешно получены с попытки #{attempt}.")
+            return response.json()
+
+        except requests.RequestException as e:
+            status_code = e.response.status_code if e.response is not None else None
+            
+            if status_code in [401, 404]:
+                print(f"  - !!! Критическая ошибка {status_code} при получении деталей для ID {media_id}. Пропуск.")
+                return None
+
+            print(f"  - Ошибка при получении деталей для ID {media_id} (попытка {attempt}): {e}")
+            
+            current_try_in_batch = (attempt - 1) % max_short_retries
+            
+            if current_try_in_batch < (max_short_retries - 1):
+                sleep_duration = short_retry_delay
+                print(f"    - Пауза {sleep_duration}с перед следующей быстрой попыткой...")
+            else:
+                sleep_duration = long_retry_delay
+                print(f"    - Все {max_short_retries} быстрых попыток не удались. Пауза {sleep_duration}с...")
+
+            # Прерываемый sleep
+            for _ in range(sleep_duration):
+                if shutdown_requested: break
+                time.sleep(1)
+            
+            if shutdown_requested: break
+    
+    print(f"  - Получение деталей для ID {media_id} прервано.")
+    return None
 
 def slugify(text):
+    if not text:
+        return ""
     text = text.lower().strip()
     translit_text = ""
     for char in text:
@@ -545,18 +630,36 @@ def transform_data_pre_checks(details, category, media_type):
         country_eng = details.get('production_countries')[0].get('name') or "Неизвестно"
     country_rus = COUNTRY_TRANSLATION.get(country_eng, country_eng)
 
-    # слаг
-    slug_id = slugify(original_title) or slugify(title)
+    # слаг (приоритет у русского названия для SEO)
+    slug_id = slugify(title) or slugify(original_title)
 
     return {
-        "id": slug_id, "category": category, "title": title, "year": year,
-        "season": season_str, "image": "", "description": details.get('overview'),
-        "originalTitle": original_title, "country": country_rus, "premiere": premiere_rus,
-        "director": director, "genres": list(dict.fromkeys(genres)), "translation": None,
-        "actors": actors_csv or "", "creator": creator_name, "producers": producers_csv, "writers": writers_csv,
-        "kpRating": None, "imdbRating": details.get('vote_average'), "youtubeId": youtube_id, "trailer": trailer_url,
-        "kinopoiskId": None, "ageRating": "18+" if is_adult else None, "comments": [],
-        "_tmdb_poster_path": details.get('poster_path')
+        "id": slug_id,
+        "category": category,
+        "title": title,
+        "year": year,
+        "season": season_str,
+        "image": "",
+        "description": details.get('overview'),
+        "originalTitle": original_title,
+        "country": country_rus,
+        "premiere": premiere_rus,
+        "director": director,
+        "genres": list(dict.fromkeys(genres)),
+        "translation": None,
+        "actors": actors_csv or "",
+        "kpRating": None,
+        "imdbRating": details.get('vote_average'),
+        "popularity": details.get('popularity'),
+        "youtubeId": youtube_id,
+        "trailer": trailer_url,
+        "kinopoiskId": None,
+        "ageRating": "18+" if is_adult else None,
+        "comments": [],
+        "_tmdb_poster_path": details.get('poster_path'),
+        "creator": creator_name,
+        "producers": producers_csv,
+        "writers": writers_csv
     }
 
 def download_and_finalize_movie(movie_data):
@@ -564,7 +667,7 @@ def download_and_finalize_movie(movie_data):
     movie_slug = movie_data['id']
     
     if not poster_path:
-        print("  - Постер не найден на TMDb. Пропускаем фильм.")
+        print("  - Постер не найден на TMDb. Фильм будет пропущен.")
         return None
 
     image_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
@@ -598,10 +701,10 @@ def download_and_finalize_movie(movie_data):
                 print("    - Повторная попытка через 5 секунд...")
                 time.sleep(5)
             else:
-                print("    - Пропускаю изображение, продолжаю без него.")
+                print(f"    - !!! Не удалось скачать изображение {image_url} после {max_retries} попыток. Фильм будет пропущен.")
                 return None
     
-    return None
+    return None # На случай если цикл завершится без return
 
 def determine_movie_category(movie):
     genre_ids = movie.get('genre_ids', [])
@@ -661,77 +764,74 @@ def get_person_name_ru(person_id: int, fallback_name: str) -> str:
     except requests.RequestException:
         return fallback_name or ""
 
-def load_existing_data(filename):
-    if not os.path.exists(filename) or os.path.getsize(filename) == 0:
-        return {'movies': []}
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
-        print(f"Ошибка чтения файла {filename}: {e}. Будет создана новая структура.")
-        return {'movies': []}
-    if isinstance(data, dict) and 'movies' in data and isinstance(data['movies'], list):
-        return data
-    if isinstance(data, dict) and all(k in data for k in CATEGORY_GENRE_NAMES.keys()):
-        print("Обнаружена структура с категориями. Конвертирую в единый список 'movies'...")
-        all_movies = []
-        for category, movies_list in data.items():
-            for movie in movies_list:
-                if 'category' not in movie:
-                    movie['category'] = category
-                all_movies.append(movie)
-        print("Конвертация завершена.")
-        return {'movies': all_movies}
-    print("Неизвестный формат JSON. Будет создана новая структура.")
-    return {'movies': []}
-
-# --- ФУНКЦИИ ДЛЯ СОХРАНЕНИЯ ПРОГРЕССА ---
-PROGRESS_FILE = 'progress_last_movies.json'
-
-def save_progress(movie_page_number, tv_page_number):
-    current_month_str = datetime.now().strftime('%Y-%m')
-    with open(PROGRESS_FILE, 'w') as f:
-        json.dump({'month': current_month_str, 'movie_last_page_processed': movie_page_number, 'tv_last_page_processed': tv_page_number}, f)
-
-def load_progress():
-    current_month_str = datetime.now().strftime('%Y-%m')
-    if os.path.exists(PROGRESS_FILE):
+def load_existing_data(json_file, ndjson_file):
+    """Загружает ID из основного JSON и временного NDJSON для проверки дублей."""
+    all_movies = []
+    
+    # 1. Читаем основной JSON
+    if os.path.exists(json_file) and os.path.getsize(json_file) > 0:
         try:
-            with open(PROGRESS_FILE, 'r') as f:
+            with open(json_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if data.get('month') == current_month_str:
-                    return data.get('movie_last_page_processed', 0), data.get('tv_last_page_processed', 0)
-        except (json.JSONDecodeError, IOError):
-            pass
-    return 0, 0
+                if isinstance(data, dict) and 'movies' in data:
+                    all_movies.extend(data['movies'])
+                # Поддержка старого формата с категориями
+                elif isinstance(data, dict):
+                    for movies_list in data.values():
+                        if isinstance(movies_list, list):
+                            all_movies.extend(movies_list)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Ошибка чтения {json_file}: {e}. Проверка дублей по нему может быть неполной.")
+
+    # 2. Читаем временный NDJSON, чтобы учесть уже добавленные в этой сессии
+    if os.path.exists(ndjson_file):
+        try:
+            with open(ndjson_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.strip():
+                        all_movies.append(json.loads(line))
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Ошибка чтения {ndjson_file}: {e}. Проверка дублей по нему может быть неполной.")
+            
+    return all_movies
 
 # --- ОСНОВНОЙ БЛОК ВЫПОЛНЕНИЯ ---
+#pfmукацуацуtretttttttttttttttttttацу
+async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_ids):
+    # Шаг 1: Правильно извлекаем название и категорию в зависимости от типа
+    if media_type == 'movie':
+        original_title = item_summary.get('original_title', '')
+        title = item_summary.get('title', '')
+        category = determine_movie_category(item_summary)
+    else:  # tv
+        original_title = item_summary.get('original_name', '')
+        title = item_summary.get('name', '')
+        category = determine_tv_category(item_summary)
 
-async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_ids, existing_data):
-    # Предварительный фильтр: пропуск будущих релизов (movie: release_date, tv: first_air_date)
+    # Шаг 2: Предварительный фильтр по дате релиза (с правильным названием в логе)
     rel_str = (item_summary.get('release_date') if media_type == 'movie' else item_summary.get('first_air_date')) or ''
     if rel_str:
         try:
             rel_dt = datetime.strptime(rel_str, '%Y-%m-%d').date()
             if rel_dt > datetime.now().date():
-                print(f"Пропуск '{item_summary.get('title')}' ({item_summary.get('id')}): будущая дата релиза {rel_str}.")
+                print(f"Пропуск '{title}' ({item_summary.get('id')}): будущая дата релиза {rel_str}.")
                 return None
         except ValueError:
             pass
 
-    original_title = item_summary.get('original_title', '')
-    title = item_summary.get('title', '')
-    category = determine_movie_category(item_summary)
-
-    # Дата релиза для лога (чтобы видеть, что это текущий месяц)
-    rel_str = (item_summary.get('release_date') if media_type == 'movie' else item_summary.get('first_air_date')) or ''
+    # Шаг 3: Логируем начало обработки
     print(f"\n--- Обработка нового контента ({media_type}): {title}")
     if rel_str:
         print(f"    - Дата релиза по TMDb: {rel_str}")
     else:
         print("    - Дата релиза по TMDb: не указана")
 
-    slug = slugify(original_title) or slugify(title)
+    # Шаг 4: Генерируем ID и проверяем на дубликаты
+    slug = slugify(title) or slugify(original_title)
+    if not slug:
+        print(f"Не удалось сгенерировать ID для '{title}'. Пропуск.")
+        return None
+
     if slug in existing_slug_ids:
         print(f"Контент '{title}' ({slug}) уже есть в базе (id). Пропуск.")
         return None
@@ -779,42 +879,68 @@ async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_
     print(f"Найден Kinopoisk ID: {kp_id}")
 
     original_desc = transformed.get('description')
-    rewritten_desc = None
-    for attempt in range(1, 2+1):
-        print(f"Переписываем описание (попытка {attempt}/2)...")
-        rewritten_desc = await asyncio.to_thread(rewrite_description_sync, original_desc)
-        if rewritten_desc is not None:
-            print("  - Описание успешно переписано.")
+    
+    print("Переписываем описание...")
+    
+    rewritten_desc = ""
+    max_rewrite_retries = 3
+    for attempt in range(1, max_rewrite_retries + 1):
+        if shutdown_requested:
             break
-        if attempt < 2:
-            print("  - Не удалось переписать. Повтор через 5с...")
+            
+        print(f"  - Попытка рерайта #{attempt}/{max_rewrite_retries}...")
+        desc_candidate = await asyncio.to_thread(rewrite_description_sync, original_desc)
+
+        if desc_candidate is None: # Контент заблокирован API
+            print(f"    - Контент заблокирован API. Рерайт невозможен.")
+            rewritten_desc = None # специальный маркер для блокировки
+            break 
+        
+        if desc_candidate.strip(): # Успех, есть текст
+            rewritten_desc = desc_candidate
+            break
+        
+        # Пустой ответ, но не заблокировано
+        if attempt < max_rewrite_retries:
+            print(f"    - API вернул пустой текст. Пауза 5с перед повторной попыткой...")
             await asyncio.sleep(5)
+
     if rewritten_desc is None:
-        print(f"Не удалось переписать описание после 2 попыток. Пропуск '{transformed.get('title')}'.")
+        print(f"Не удалось переписать описание для '{transformed.get('title')}' (контент заблокирован). Пропуск.")
         return None
+        
+    if not rewritten_desc: # Все попытки вернули пустую строку или был shutdown
+        if shutdown_requested:
+            print(f"Рерайт для '{transformed.get('title')}' прерван пользователем. Пропуск элемента.")
+        else:
+            print(f"Не удалось переписать описание для '{transformed.get('title')}' после {max_rewrite_retries} попыток. Пропуск.")
+        return None
+
+    print("  - Описание успешно переписано.")
     transformed['description'] = rewritten_desc
 
     finalized = download_and_finalize_movie(transformed)
     # если download_and_finalize_movie вернёт None при тяжёлой ошибке — пропустим элемент
-    return finalized or transformed
+    return finalized
 
 async def main():
-    target_new_movie_count = 30
+    target_new_movie_count = float('inf') # Устанавливаем бесконечность для непрерывной работы
 
-    existing_data = load_existing_data(OUTPUT_FILE)
-    existing_kp_ids = {m.get('kinopoiskId') for m in existing_data.get('movies', []) if m.get('kinopoiskId')}
-    existing_slug_ids = {m.get('id') for m in existing_data.get('movies', [])}
-    print(f"В базе уже {len(existing_slug_ids)} записей. С Kinopoisk ID: {len(existing_kp_ids)}.")
+    all_existing_movies = load_existing_data(JSON_DATA_FILE, NDJSON_OUTPUT_FILE)
+    existing_kp_ids = {m.get('kinopoiskId') for m in all_existing_movies if m.get('kinopoiskId')}
+    existing_slug_ids = {m.get('id') for m in all_existing_movies}
+    print(f"В базе (JSON + NDJSON) уже {len(existing_slug_ids)} записей. С Kinopoisk ID: {len(existing_kp_ids)}.")
 
-    last_movie_page, last_tv_page = load_progress()
-    current_movie_page = last_movie_page + 1
-    current_tv_page = last_tv_page + 1
+    current_movie_page = 1
+    current_tv_page = 1
 
     added = 0
     total_movie_pages = float('inf')
     total_tv_pages = float('inf')
 
     while added < target_new_movie_count and (current_movie_page <= total_movie_pages or current_tv_page <= total_tv_pages):
+        if shutdown_requested:
+            break
         # страница фильмов
         if current_movie_page <= total_movie_pages:
             mp = fetch_page_current_month(TMDB_API_KEY, current_movie_page, media_type='movie')
@@ -829,20 +955,25 @@ async def main():
             else:
                 total_movie_pages = mp.get('total_pages', total_movie_pages)
                 for item in mp['results']:
-                    fin = await process_item(item, 'movie', existing_slug_ids, existing_kp_ids, existing_data)
+                    if shutdown_requested:
+                        break
+                    fin = await process_item(item, 'movie', existing_slug_ids, existing_kp_ids)
+                    
                     if fin:
-                        existing_data['movies'].append(fin)
+                        append_to_ndjson(NDJSON_OUTPUT_FILE, fin)
                         existing_kp_ids.add(fin['kinopoiskId'])
                         existing_slug_ids.add(fin['id'])
                         added += 1
-                        print(f"-> '{fin.get('title')}' добавлен. Всего: {added}.")
-                        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-                            json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                        print(f"-> '{fin.get('title')}' добавлен в ndjson. Всего за сессию: {added}.")
                     if added >= target_new_movie_count: break
-                save_progress(current_movie_page, current_tv_page - 1)
+                if shutdown_requested:
+                    break
+                # save_progress(current_movie_page, current_tv_page - 1)
                 current_movie_page += 1
                 time.sleep(1)
         if added >= target_new_movie_count: break
+        if shutdown_requested:
+            break
 
         # страница сериалов
         if current_tv_page <= total_tv_pages:
@@ -858,24 +989,26 @@ async def main():
             else:
                 total_tv_pages = tp.get('total_pages', total_tv_pages)
                 for item in tp['results']:
-                    fin = await process_item(item, 'tv', existing_slug_ids, existing_kp_ids, existing_data)
+                    if shutdown_requested:
+                        break
+                    fin = await process_item(item, 'tv', existing_slug_ids, existing_kp_ids)
+                    
                     if fin:
-                        existing_data['movies'].append(fin)
+                        append_to_ndjson(NDJSON_OUTPUT_FILE, fin)
                         existing_kp_ids.add(fin['kinopoiskId'])
                         existing_slug_ids.add(fin['id'])
                         added += 1
-                        print(f"-> '{fin.get('title')}' добавлен. Всего: {added}.")
-                        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-                            json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                        print(f"-> '{fin.get('title')}' добавлен в ndjson. Всего за сессию: {added}.")
                     if added >= target_new_movie_count: break
-                save_progress(current_movie_page - 1, current_tv_page)
+                if shutdown_requested:
+                    break
+                # save_progress(current_movie_page - 1, current_tv_page)
                 current_tv_page += 1
                 time.sleep(1)
 
-    print(f"\nГотово! За сессию добавлено {added} новых единиц контента. Общее количество: {len(existing_data['movies'])}.")
-    if target_new_movie_count != float('inf'):
-        print("Сбрасываем прогресс для следующего поиска новинок...")
-        save_progress(0, 0)
+    print(f"\nГотово! За сессию добавлено {added} новых записей в {NDJSON_OUTPUT_FILE}.")
+    if shutdown_requested:
+        print("Скрипт был остановлен пользователем.")
 
 if __name__ == "__main__":
     asyncio.run(main())

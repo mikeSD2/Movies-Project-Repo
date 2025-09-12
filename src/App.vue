@@ -12,17 +12,21 @@
         @close="clearSearch"
       />
       
-      <!-- Основной контент -->
-      <main class="content" v-if="!searchQuery">
-        <router-view />
-      </main>
+<!-- Основной контент -->
+<main class="content" v-if="!searchQuery">
+  <router-view />
+</main>
       
       <!-- Футер -->
       <AppFooter />
     </div>
     
     <!-- Мобильное меню -->
-    <MobileMenu :is-visible="mobileMenuVisible" @close="closeMobileMenu" />
+    <MobileMenu 
+      :is-visible="mobileMenuVisible" 
+      @close="closeMobileMenu" 
+      @search="handleMobileSearch" 
+    />
   </div>
 </template>
 
@@ -33,30 +37,29 @@ import AppHeader from './components/AppHeader.vue'
 import AppFooter from './components/AppFooter.vue'
 import SearchResults from './components/SearchResults.vue'
 import MobileMenu from './components/MobileMenu.vue'
-import moviesData from '../movies-data.json'
 
 const searchQuery = ref('')
 const searchResults = ref([])
 const mobileMenuVisible = ref(false)
 
-const handleSearch = (query) => {
+const handleSearch = async (query) => {
   searchQuery.value = query
-  if (query) {
-    searchResults.value = moviesData.movies.filter(movie =>
-      movie.id !== 'index' &&
-      (movie.title || '').toLowerCase().includes(query.toLowerCase()) ||
-      (movie.originalTitle || '').toLowerCase().includes(query.toLowerCase()) ||
-      (movie.description || '').toLowerCase().includes(query.toLowerCase()) ||
-      (movie.actors || '').toLowerCase().includes(query.toLowerCase())
-    )
-  } else {
+  if (!query) {
     searchResults.value = []
+    return
   }
+  const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+  searchResults.value = resp.ok ? await resp.json() : []
 }
 
 const clearSearch = () => {
   searchQuery.value = ''
   searchResults.value = []
+}
+
+const handleMobileSearch = (query) => {
+  handleSearch(query)
+  closeMobileMenu()
 }
 
 // Функции мобильного меню
@@ -70,6 +73,9 @@ const closeMobileMenu = () => {
 
 // Инициализация темы
 const switchTheme = () => {
+  if (typeof document === 'undefined' || typeof localStorage === 'undefined') {
+    return
+  }
   const bd = document.body
   const sett = ['lt', 'btn1']
   let ls = JSON.parse(localStorage.getItem('settlf'))
@@ -91,6 +97,9 @@ const switchTheme = () => {
 const router = useRouter()
 
 onMounted(() => {
+  // Инициализируем тему только на клиенте
+  switchTheme()
+
   // Сбрасываем результаты при любой навигации
   router.afterEach(() => {
     clearSearch()
@@ -111,14 +120,7 @@ onMounted(() => {
   })
 })
 
-switchTheme()
 </script>
 
 <style>
-/* Импорт существующих стилей */
-@import url('./assets/lordfilm-website/css/common.css@v=h3qx6.css');
-@import url('./assets/lordfilm-website/css/styles.css@v=h3qx6.css');
-@import url('./assets/lordfilm-website/css/responsive.css@v=h3qx6.css');
-@import url('./assets/lordfilm-website/css/engine.css@v=h3qx6.css');
-@import url('./assets/lordfilm-website/css/fontawesome.css@v=h3qx6.css');
 </style>

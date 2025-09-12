@@ -559,9 +559,10 @@ div.navbar__nav-hidden {
 .page-nav__pages span,
 .pagination > a,
 .pagination > span {
-  display: grid;
+  display: flex;
   place-items: center;
   color: var(--tt-fade);
+  justify-content:center;
   height: 36px;
   min-width: 36px;
   border-radius: 3px;
