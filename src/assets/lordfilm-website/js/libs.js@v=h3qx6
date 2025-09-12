@@ -1,0 +1,552 @@
+function ExpectedClick(post_id, reaction) {
+    $.get(dle_root + "engine/ajax/controller.php?mod=anons_rating", {
+        post_id: post_id,
+        reaction: reaction,
+        user_hash: dle_login_hash
+    }, function(data) {
+        if (data.status == "done") {
+            $('#expected_percent_' + post_id).html(data.rating + '%');
+            $('#expected_count_' + post_id).html(data.count);
+            document.getElementById("expected_bar_" + post_id).style = "width:" + data.rating + "%;";
+        } else {
+            DLEalert(data.error, 'Внимание');
+        }
+    }, "json");
+}
+
+function ExpectedList(post_id, type) {
+    if (dle_group == 5) {
+        DLEalert('Доступо только авторизованным пользователям', dle_info);
+        return false;
+    }
+    $.get(dle_root + "engine/ajax/controller.php?mod=favorites", {
+        fav_id: post_id,
+        action: type,
+        skin: dle_skin,
+        alert: 0,
+        user_hash: dle_login_hash
+    }, function(data) {
+        if (data.success) {
+            if (type == 'plus') {
+                document.getElementById('watchlist_seen_' + post_id).style.display = 'block';
+                document.getElementById('watchlist_noseen_' + post_id).style.display = 'none';
+            } else if (type == 'minus') {
+                document.getElementById('watchlist_seen_' + post_id).style.display = 'none';
+                document.getElementById('watchlist_noseen_' + post_id).style.display = 'block';
+            }
+        } else if (data.error) {
+            DLEalert(data.content, dle_info);
+        }
+    }, "json");
+    return false;
+}
+
+function Ajaxsend(mod, method, data, callback, error, always, options) {
+    data || (data = {});
+    data.method = method;
+    data.user_hash = dle_login_hash;
+    data.skin = dle_skin;
+    var config = {
+        DLEloading: true,
+    };
+    if (typeof options == 'object') {
+        for (var i in options) {
+            config[i] = options[i];
+        }
+    }
+    $.ajax({
+        url: dle_root + 'engine/ajax/controller.php?mod=' + mod,
+        type: 'POST',
+        dataType: 'json',
+        data: data,
+    }).done(function(d) {
+        if (d.error) {
+            if (error) {
+                error();
+            } else {
+                DLEalert(d.errorinfo, 'Внимание');
+            }
+        } else {
+            callback && callback(d);
+        }
+    }).fail(function(e) {
+        if (error) {
+            error(e);
+        } else {
+            DLEalert(e.responseText, 'Internal server error')
+        }
+    }).always(function() {
+        always && always();
+    });
+}
+
+function show_react(id) {
+    var elem = document.querySelector("#react_wrapper_" + id);
+    if (elem.classList.contains("show_react")) elem.classList.remove("show_react");
+    else elem.classList.add("show_react");
+}
+
+function hide_react(id) {
+    var elem = document.querySelector("#react_wrapper_" + id);
+    elem.classList.remove("show_react");
+}
+
+function do_react(id, reaction) {
+    Ajaxsend('do_react', 'reaction', {
+        comm_id: id,
+        reaction: reaction
+    }, function(d) {
+        $('#all_reactions_' + id).html(d.reaction_box);
+        var elem = document.querySelector("#react_wrapper_" + id);
+        elem.classList.remove("show_react");
+    })
+}
+
+function all_react(id) {
+    Ajaxsend('do_react', 'all_reaction', {
+        comm_id: id
+    }, function(d) {
+        var shadow = 'none';
+        $('#comm_reactions_show').remove();
+        $('body').prepend("");
+        var wh = $(window).height() * 0.5;
+        var ww = $(window).width() * 0.5;
+        if (ww > 1024) {
+            ww = 1024;
+        }
+        $('#comm_reactions_show').dialog({
+            autoOpen: true,
+            width: ww,
+            height: wh,
+            resizable: false,
+            dialogClass: "modalfixed dle-popup-quickedit",
+            dragStart: function(event, ui) {
+                shadow = $(".modalfixed").css('box-shadow');
+                $(".modalfixed").css('box-shadow', 'none');
+            },
+            dragStop: function(event, ui) {
+                $(".modalfixed").css('box-shadow', shadow);
+            },
+            close: function(event, ui) {
+                $(this).dialog('destroy');
+                $('#modal-overlay').fadeOut(function() {
+                    $('#modal-overlay').remove();
+                });
+            }
+        });
+        if ($(window).width() > 830 && $(window).height() > 530) {
+            $('.modalfixed.ui-dialog').css({
+                position: "fixed"
+            });
+            $('#comm_reactions_show').dialog("option", "position", {
+                my: "center",
+                at: "center",
+                of: window
+            });
+        }
+        $('#comm_reactions_show').css({
+            overflow: "auto"
+        });
+        $('#comm_reactions_show').css({
+            'overflow-x': "hidden"
+        });
+        $("#comm_reactions_show").html(d.all_reactions);
+    })
+}
+
+$(document).ready(function(){
+	
+	/* ====================== BUILDING ====================== */
+
+	var append = `
+	<div class="overlay"></div>
+	<div class="mobile-menu">
+		<div class="mobile-menu__header d-flex ai-center">
+			<button class="mobile-menu__btn-close btn-nobg btn-square fal fa-times" aria-label="Закрыть мобильное меню"></button>
+		</div>
+		<div class="mobile-menu__content"></div>
+	</div>
+	<button id="scrolltop" class="scrolltop fal fa-arrow-up" aria-label="Наверх"></button>
+	`;
+	$('body').append(append);
+	
+
+	/* ====================== HEADER  ====================== */
+
+    var scrollTop = $(window).scrollTop(), hdr = $('#header'), hdrPos = hdr.offset().top + 140;
+    $(window).scroll(function(){
+        if ($(window).scrollTop() > scrollTop && scrollTop > hdrPos) {
+            $('body').addClass('navbar-fixed');
+        } else {
+            $('body').removeClass('navbar-fixed');
+        }
+        scrollTop = $(window).scrollTop();
+    });
+
+	$('.js-theme-toggle').click(function(){
+		var ls = JSON.parse(localStorage.getItem('settlf'));
+		var d = ls[0] == 'lt' ? 'dt' : 'lt';
+		ls[0] = d;
+		localStorage.setItem('settlf',JSON.stringify(ls));
+		$('body').removeClass('lt dt');
+		switchTheme();
+	});
+    $(document).on('click','.js-show-login',function(){
+		$('.overlay, .lgn').fadeIn(200);
+		$('.gst').fadeOut(200);
+		$('body').addClass('modal-is-opened');
+		$('.mobile-menu').removeClass('is-active');
+		return false;
+	})
+	.on('click','.header__search',function(){ 
+		$('.search-panel__input').focus();
+		setTimeout(()=>{
+			var searchWidth = $('.search-panel__input').outerWidth();
+			$('body').css({'--searchWidth':searchWidth+'px'});
+
+		},500);
+	});
+	
+	/* ====================== TABS  ====================== */
+
+	$(".section__tabs").on("click", "[data-id]:not(.is-active)", function(){
+		var id = '#' + $(this).data('id'), page = '/' + $(this).parent().data('trg') + '.html',
+			items = $(this).closest('.sect').find('.section__content');
+		$.ajax({
+			url: page,
+			beforeSend: function() {ShowLoading('');},			 
+			success: function(data) {
+			   items.html($(id, data).html());
+				HideLoading('');
+			},
+			error: function() {HideLoading(''); alert('что-то пошло не так, прочитайте инструкцию'); }
+		});
+		$(this).addClass('is-active').siblings().removeClass('is-active');
+	});
+
+	/* ====================== SHORT STORY  ====================== */
+
+	$(document).on('click','[data-href]',function(){
+		var trg = $(this).data('href');
+		window.location.href = trg;
+	});
+	
+	$(document).on('click','.js-show-trailer',function(){
+		let iUrl = $(this).data('trg');
+		if ($(window).width() > 1220) {	 removeThtext(); };
+		$.ajax({
+			url: iUrl,
+			beforeSend: function() {ShowLoading('');},			 
+			success: function(data) {
+			   $('body').append('<div class="trl d-none" id="trl"><div class="trailer-popup__inner"><div class="trailer-popup__video video-inside video-responsive"></div><div class="trailer-popup__content"></div></div><button class="trailer-popup__close btn-nobg btn-square fal fa-times"></button></div>');
+			   let trl = $('#trl');
+			   $('body').addClass('trailer-popup-opened').removeClass('sinfo-is-opened');
+			   trl.find('.trailer-popup__video').append($('#trailer-block iframe', data));
+			   trl.find('.trailer-popup__content').append('<a href="'+iUrl+'" class="trailer-popup__btn btn fal fa-play">Смотреть онлайн</a>');
+			   trl.find('.trailer-popup__content').append($('.content-page__text .rich-text', data));
+			   trl.fadeIn(200);
+			   trl.find('[data-src]').each(function(){
+				   var trg = $(this).data('src');
+				   $(this).attr('src',trg).removeAttr('data-src');
+			   });
+				HideLoading('');
+			},
+			  error: function() {HideLoading(''); alert('что-то пошло не так'); }
+		});
+	})
+	.on('click','.trailer-popup__close',function(){
+		$('.trl').fadeOut(200,function(){ $(this).remove(); });
+		$('body').removeClass('trailer-popup-opened');
+	});
+
+	if ($(window).width() > 1220) {	
+	
+		function removeThtext() {
+			timerId = setTimeout(function () {
+				$('body').removeClass('pop-left').children('.tooltip-box').remove();
+			}, 100);
+		};
+		
+		var timerId;
+		
+		$('body').on({
+			mouseenter: function () {
+				clearTimeout(timerId);
+				var inf = $(this), iUrl = inf.closest('.item').find('.media__title').attr('href'),
+					winWidth = window.innerWidth, iPosLeft = inf.offset().left + 37, iPosTop = inf.offset().top;
+					if (iPosLeft > winWidth/2 + 200) { 
+						$('body').addClass('pop-left'); iPosLeft = inf.offset().left - 457;
+					};
+					if( $('.tooltip-box').length < 1 ) {
+						$.ajax({
+							url: iUrl,
+							beforeSend: function() {
+								$('body').append('<div class="tooltip-box"><div class="tooltip-box-loader">Загрузка</div></div>')
+								$('body').children('.tooltip-box').css({'left':iPosLeft,'top':iPosTop}).fadeIn(200);
+							},			 
+							success: function(data) {
+								var iText = $('body').children('.tooltip-box'); iText.empty();
+								iText.append($('.content-page__header h1', data)); 
+								iText.append($('.content-page__text .rich-text', data)); 
+								iText.append($('.content-page__list', data)); 
+								if ($('#trailer-block', data).length > 0) {
+									iText.append('<button class="content-page__btn-trailer js-show-trailer" data-trg="'+iUrl+'">Смотреть трейлер</button>');
+								};
+							},
+							  error: function() { console.log('error ajax popup'); }
+						});
+					};
+				},
+			mouseleave: function () {
+				removeThtext();
+			}
+		},'.media__btn-info');
+		
+		$('body').on({
+			mouseenter: function () { clearTimeout(timerId); },
+			mouseleave: function () { removeThtext(); }
+		},'.tooltip-box');
+	
+	};
+
+	/* ====================== PAGINATION ====================== */
+
+	$(document).on('click','.page-nav__btn-loader a',function(){
+		var urlNext = $(this).attr('href'), scrollNext = $(this).offset().top, 
+		trg = $(this).closest('[id]').parent('[id]').attr('id');
+
+		// Build absolute base for request and normalization
+		var absBase;
+		try { absBase = new URL(urlNext, window.location.href).toString(); } catch(e) { absBase = urlNext; }
+
+		function onSuccess(data) {
+			var newInnerHtml = $('#'+trg+'', data).html();
+			var $newFragment = $(newInnerHtml);
+			$('#pagination').remove();
+			$('#'+trg+'').append($newFragment);
+			(function(){
+				var m = (absBase && absBase.match(/page\/(\d+)/)) || (urlNext && urlNext.match(/page\/(\d+)/));
+				if (m) {
+					var basePath = window.location.pathname;
+					var sep = basePath.indexOf('?') === -1 ? '?' : '&';
+					var newUrl = basePath + sep + 'page=' + m[1];
+					window.history.pushState("", "", newUrl);
+				}
+			})();
+
+			// Normalize newly appended links based on loaded page URL
+			$newFragment.find('a[href]').each(function(){
+				var h = $(this).attr('href');
+				if (!h) return;
+				if (/^(https?:)?\/\//i.test(h)) return;
+				if (/^(mailto:|tel:|javascript:|#)/i.test(h)) return;
+				try {
+					var abs = new URL(h, absBase || window.location.href);
+					if (abs.origin === window.location.origin) {
+						$(this).attr('href', abs.pathname);
+					} else {
+						$(this).attr('href', abs.toString());
+					}
+				} catch (e) { /* noop */ }
+			});
+
+			$('html, body').animate({scrollTop:scrollNext}, 800);
+			$('.page-nav__btn-loader span:not(.fal)').text('Больше нет новостей');
+			HideLoading('');
+		}
+
+		function onErrorFinal() {
+			HideLoading(''); alert('что-то пошло не так');
+		}
+
+		function doRequest(primary, secondary) {
+			$.ajax({
+				url: primary,
+				beforeSend: function() { ShowLoading('<p class="bolder">Загрузка</p>Пожалуйста, подождите...','right','top'); },
+				success: onSuccess,
+				error: function() {
+					if (secondary) { doRequest(secondary, null); }
+					else { onErrorFinal(); }
+				}
+			});
+		}
+
+		// Try absolute first, then fallback to raw relative
+		doRequest(absBase, urlNext);
+
+		return false;
+	});
+
+	/* ====================== FILTER BLOCK  ====================== */
+
+	$('.filter-block__title, .js-show-filter').click(function(){
+		if ($(window).width() < 760) {
+			$('.filter-block').toggleClass('is-active');
+			$(this).toggleClass('fa-times fa-sliders-h');
+		};
+	});
+
+	/* ====================== TABS, SCROLL TO PLAYER, TEXT HIDE, LIGHT BUTTON, FRANCHISE ====================== */
+
+	$('.tabs-block').each(function(){
+		$(this).find('.tabs-block__select button:first').addClass('is-active');
+		$(this).find('.tabs-block__content:first').removeClass('d-none');
+		$(this).removeClass('nl');
+	});
+	$('.tabs-block__select').on('click', 'button:not(.is-active)', function() {
+		$(this).addClass('is-active').siblings().removeClass('is-active')
+		.parents('.tabs-block').find('.tabs-block__content').hide().eq($(this).index()).fadeIn(0);
+		$('.tabs-block').find('[data-src]').each(function(){
+			var trg = $(this).data('src');
+			$(this).attr('src',trg).removeAttr('data-src');
+		});
+	});	
+	
+	$(".js-scroll-to").click(function(){
+		$('html, body').animate({scrollTop:$('.content-page__player').offset().top - 10}, 800);
+	});
+
+	$('.js-hide-text').each(function(){
+		var h = $(this).children('.rich-text').outerHeight(), hHide = 160;
+		if (h > hHide) {$(this).css({'overflow':'visible','max-height':'2000px'})
+			.children('.rich-text').css({'overflow':'hidden','height':hHide+'px'})
+			.after('<div class="show-text btn">Развернуть описание</div>');
+		};
+	});	
+	$('body').on('click','.show-text',function(){
+		$(this).prev('.rich-text').removeAttr('style'); 
+		$(this).parent('.content-page__text').removeClass('js-hide-text'); 
+		$(this).remove();
+	});
+
+	$('.content-page__light-button').click(function () {
+		if ($('.dark-overlay').length === 0 ) {
+			$('#content-page__player').before('<div class="dark-overlay d-none"></div>');
+		};
+		if ($(this).find('input').is(':checked')) {
+			$('body').removeClass('light-off');
+			$('.dark-overlay').fadeOut(200);
+		} else {
+			$('body').addClass('light-off');
+			$('.dark-overlay').fadeIn(200);
+		}
+	});
+
+	$('[data-fnid]').each(function(){
+		var fnid = $(this).data('fnid');
+		$('[data-nid='+fnid+']').addClass('is-active');
+	});		
+
+	/* ====================== POPUP WIDGET, MOBILE MENU, OVERLAY CLOSE ====================== */
+
+    $(document).on('click','.wctrailer-popup__btn',function(){
+		var pwidgetHtml = `
+		<div class="pwidget d-none">
+			<button class="pwidget__btn btn-fade w-100">Закрыть</button>
+		</div>`;
+		$('body').append(pwidgetHtml);
+		var pwidgetContent = $(this).next('.wctrailer-popup__content');
+		pwidgetContent.prependTo('.pwidget');
+		$('.overlay, .pwidget').fadeIn(200);
+		return false;
+	})
+	.on('click','.wctrailer-popup__content li',function(){
+		$('.overlay').trigger('click');
+	});
+
+	$(".js-show-mobile-menu").click(function(){
+		if ($('.mobile-menu--is-generated').length === 0) {
+			$('.navbar__logo').clone().addClass('mr-auto').prependTo('.mobile-menu__header');
+			$('.js-this-in-mobile-menu').each(function() {
+				$(this).clone().prependTo('.mobile-menu__content');
+			});	
+		};
+		$('.overlay').fadeIn(200);
+		$('.mobile-menu').addClass('is-active mobile-menu--is-generated');
+		$('body').addClass('mobile-menu-is-opened');
+		$('.mobile-menu__content').find('.search-panel__input').removeAttr('id');
+	});
+    $(document).on('click','.overlay, .login-modal__btn-close, .mobile-menu__btn-close, .js-close-guest, .pwidget__btn',function(){
+		$('.overlay, .lgn, .gst, pwidget').fadeOut(200,function(){ 
+			var pwidget = $('.pwidget'), pwidgetContent = pwidget.find('.wctrailer-popup__content'), pwidgetId = pwidgetContent.data('id'); 
+			pwidgetContent.appendTo('.wctrl[data-id="'+pwidgetId+'"]');
+			pwidget.remove();
+		});
+		$('.mobile-menu').removeClass('is-active');
+		$('body').removeClass('modal-is-opened mobile-menu-is-opened trailer-popup-opened');
+	});
+
+    // Ensure cloned mobile search keeps functional search without duplicate IDs
+    // and gets its own results container right under the search block on first open
+    $(document).on('click', '.js-show-mobile-menu', function(){
+        setTimeout(function(){
+            try {
+                var mm = $('.mobile-menu.is-active .mobile-menu__content');
+                if (!mm.length) return;
+                // Remove duplicate id from cloned input if any
+                mm.find('#story').removeAttr('id');
+                mm.find('form#quicksearch').each(function(){
+                    $(this).addClass('js-search-form');
+                });
+                // Inject results container if missing
+                var searchBlock = mm.find('.header__search').first();
+                if (searchBlock.length) {
+                    var next = searchBlock.next('.search-results-block');
+                    if (!next.length) {
+                        $('<div>', {
+                            id: 'search-results-mobile',
+                            class: 'grid-items count-items search-results-block',
+                            css: { display: 'none', padding: '0px', 'grid-template-columns': 'repeat(2, minmax(0, 1fr))' }
+                        }).insertAfter(searchBlock);
+                    }
+                }
+            } catch(e) { /* noop */ }
+        }, 0);
+    });
+	
+	/* ====================== DLE SCRIPTS ====================== */
+
+	$(document).on('click','.comment-form__editor textarea, .fr-wrapper, .comment-form',function(){
+		$('.comment-form').addClass('is-active').find('.message-info').show();
+		$('.comment-toggle').removeClass('comment-toggle');
+	})
+	.on('click','.login__social a, .serv__social a',function(){
+	   	var href = $(this).attr('href'), width  = 820, height = 420, 
+	   		left   = (screen.width  - width)/2, top   = (screen.height - height)/2-100;   
+		auth_window = window.open(href, 'auth_window', "width="+width+",height="+height+",top="+top+",left="+left+"menubar=no,resizable=no,scrollbars=no,status=no,toolbar=no");
+       	return false;
+	}); 
+	$('.js-comm-author > span').each(function(){
+        var a = $(this), b = a.closest('.js-comm'), c = a.text().substr(0,1), 
+            f = b.find('.js-comm-avatar'), e = f.children('img').attr('src'),
+			d = ["#c57c3b","#753bc5","#79c53b","#eb3b5a","#45aaf2","#2bcbba","#778ca3"], rand = Math.floor(Math.random() * d.length);
+		if (e == '/templates/'+dle_skin+'/siteimages/noavatar.png') {
+            f.append('<div class="comment__letter d-flex jc-center ai-center" style="background-color:'+d[rand]+'">'+c+'</div>');
+		};
+    });	
+	var gotop = $('#scrolltop'); 
+	$(window).scroll (function () {
+		if ( $(this).scrollTop () > 300 ) { gotop.addClass('is-active'); } 
+		else { gotop.removeClass('is-active'); }
+	});	
+	gotop.click(function(){
+		$('html, body').animate({ scrollTop : 0 }, 'slow');
+	});
+
+});
+
+
+/* END */
+$(document).ready(function() {
+    function wait_player() {
+        let checkplayer = $('#vkg > .uipl-empty');
+        if (checkplayer.length) {
+            $('.tabs-block__select > button:first').remove();
+            $('.tabs-block__content:first').remove();
+            $('.tabs-block__select > button:first').addClass('is-active');
+            $('.tabs-block__content:first').css('display', 'block');
+        }
+    }
+    window.setTimeout(wait_player, 2000);
+});
+let asd = '';

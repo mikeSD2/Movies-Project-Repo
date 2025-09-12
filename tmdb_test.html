@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>TMDb: фильм по IMDb ID и KP ID</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.45;margin:20px;background:#0b0f14;color:#e8eef5}
+    h1{font-size:20px;margin:0 0 12px}
+    form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    input,button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid #2a3542;background:#0f1520;color:#e8eef5}
+    input{min-width:240px}
+    button{cursor:pointer;background:#1b2838}
+    button:hover{background:#223347}
+    .card{display:flex;gap:14px;align-items:flex-start;background:#0f1520;border:1px solid #223347;border-radius:12px;padding:12px;max-width:780px}
+    .poster{width:160px;max-height:240px;object-fit:cover;border-radius:8px;border:1px solid #223347;background:#0b0f14}
+    a{color:#8ecbff;text-decoration:none}
+    a:hover{text-decoration:underline}
+    #out{min-height:48px;margin-bottom:10px}
+    details{max-width:780px}
+    #log{white-space:pre-wrap;background:#0f1520;border:1px solid #223347;border-radius:8px;padding:10px}
+  </style>
+</head>
+<body>
+  <h1>Поиск фильма TMDb по IMDb ID или Kinopoisk ID</h1>
+
+  <form id="form">
+    <input id="imdb" type="text" value="tt0111161" placeholder="например, tt0111161" pattern="tt\d{7,}" required>
+    <button type="submit">Найти по IMDb</button>
+  </form>
+
+  <form id="form-kp">
+    <input id="kp" type="text" value="301" placeholder="например, 301 (Kinopoisk ID)" pattern="\d{1,}" required>
+    <button type="submit">Найти по KP</button>
+  </form>
+
+  <div id="out"><em>Готово к поиску…</em></div>
+
+  <details open>
+    <summary>Debug</summary>
+    <pre id="log"></pre>
+  </details>
+
+  <script>
+    const API_KEY = '636c87f3e6bbd33eae8ee8265c83082e';
+    const DEBUG = true;
+
+    const $ = s => document.querySelector(s);
+    const out = $('#out');
+    const logEl = $('#log');
+    function log(...args){
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      console.log(msg);
+      if (DEBUG) logEl.textContent += msg + '\n';
+    }
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    async function findByImdb(imdbId) {
+      out.innerHTML = '<em>Загрузка…</em>';
+      try {
+        const url = `https://api.themoviedb.org/3/find/${encodeURIComponent(imdbId)}?api_key=${API_KEY}&external_source=imdb_id&language=ru-RU`;
+        log('TMDb GET', url);
+        const res = await fetch(url);
+        log('TMDb status:', res.status);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        log('TMDb payload keys:', Object.keys(data));
+        const m = data.movie_results?.[0];
+        if (!m) {
+          out.innerHTML = '<strong>Фильм не найден в TMDb по этому IMDb ID.</strong>';
+          return;
+        }
+        const poster = m.poster_path ? `https://image.tmdb.org/t/p/w342${m.poster_path}` : '';
+        const year = (m.release_date || '').slice(0,4);
+        out.innerHTML = `
+          <div class="card">
+            ${poster ? `<img class="poster" src="${poster}" alt="${m.title || m.name}">` : ''}
+            <div>
+              <h2>${m.title || m.name} ${year ? `(${year})` : ''}</h2>
+              <p>${m.overview || 'Описание отсутствует.'}</p>
+              <p><strong>Рейтинг TMDb:</strong> ${m.vote_average ?? '—'}</p>
+              <p>
+                <a href="https://www.imdb.com/title/${imdbId}/" target="_blank" rel="noopener">IMDb</a>
+                 ·
+                <a href="https://www.themoviedb.org/movie/${m.id}" target="_blank" rel="noopener">TMDb</a>
+              </p>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        out.textContent = 'Ошибка: ' + e.message;
+        log('TMDb error:', e);
+      }
+    }
+
+    function extractImdb(text){
+      const m = text.match(/imdb\.com\/title\/(tt\d+)/i);
+      return m ? m[1] : null;
+    }
+
+    function hostOk(u){
+      try{
+        const h = new URL(u).hostname.replace(/^www\./,'');
+        return ['wikidata.org','ru.wikipedia.org','kinorium.com','imdb.com'].some(dom => h.endsWith(dom));
+      }catch{return false}
+    }
+
+    function uniq(arr){ return [...new Set(arr)]; }
+
+    async function fetchText(url){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.text();
+    }
+
+    async function ddgLinks(query){
+      const bases = [
+        'https://duckduckgo.com/html/?q=',
+        'https://html.duckduckgo.com/html/?q='
+      ];
+      let all = [];
+      for(const b of bases){
+        const u = 'https://r.jina.ai/' + b + encodeURIComponent(query);
+        log('DDG GET', u);
+        try{
+          const t = await fetchText(u);
+          // Вытаскиваем URL из текста ридера (могут быть полноценные http(s) ссылки)
+          const urls = (t.match(/https?:\/\/[^\s"'()<>\]]+/g) || []).filter(hostOk);
+          log('DDG links found:', urls.length);
+          all = all.concat(urls);
+        }catch(e){
+          log('DDG error:', e.message || e);
+        }
+        await sleep(300);
+      }
+      return uniq(all);
+    }
+
+    async function imdbFromWikidataQid(qid){
+      const api = `https://r.jina.ai/https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`;
+      try{
+        const txt = await fetchText(api);
+        try{
+          const data = JSON.parse(txt);
+          const ent = data?.entities?.[qid]?.claims || {};
+          const p345 = ent?.P345?.[0]?.mainsnak?.datavalue?.value;
+          const m = typeof p345 === 'string' ? p345.match(/(tt\d+)/i) : null;
+          if(m) return m[1];
+        }catch{
+          const m = txt.match(/tt\d+/i);
+          if(m) return m[0];
+        }
+      }catch(e){
+        log('Wikidata JSON fetch error:', e.message || e);
+      }
+      return null;
+    }
+
+    function qidFromUrl(u){
+      const m = u.match(/\/(Q\d+)(?:[#?/]|$)/i);
+      return m ? m[1] : null;
+    }
+
+    async function kpToImdbViaDDG(kpId){
+      const queries = [
+        `site:wikidata.org P2604 ${kpId}`,
+        `site:wikidata.org "kinopoisk" "${kpId}"`,
+        `"https://www.kinopoisk.ru/film/${kpId}/"`,
+        `"http://www.kinopoisk.ru/film/${kpId}/"`,
+        `"https://www.kinopoisk.ru/series/${kpId}/"`,
+        `"http://www.kinopoisk.ru/series/${kpId}/"`,
+        `site:kinorium.com "${kpId}" "kinopoisk"`,
+        `site:ru.wikipedia.org "${kpId}" "Кинопоиск"`,
+      ];
+
+      for(const q of queries){
+        log('[SEARCH]', q);
+        const links = await ddgLinks(q);
+        for(const link of links){
+          log('  [CANDIDATE]', link);
+          const direct = extractImdb(link);
+          if(direct){
+            log('  [IMDB_FROM_URL]', direct);
+            return direct;
+          }
+          if(/wikidata\.org\/wiki\//i.test(link)){
+            const qid = qidFromUrl(link);
+            if(qid){
+              const imdb = await imdbFromWikidataQid(qid);
+              if(imdb){
+                log('  [IMDB_FROM_WIKIDATA]', imdb, 'via', qid);
+                return imdb;
+              }
+            }
+          }
+          // ru.wikipedia / kinorium: пробуем вытащить tt... из страницы
+          if(/ru\.wikipedia\.org|kinorium\.com|imdb\.com/i.test(link)){
+            try{
+              const txt = await fetchText('https://r.jina.ai/' + link);
+              const imdb = extractImdb(txt);
+              if(imdb){
+                log('  [IMDB_FROM_HTML]', imdb, '@', link);
+                return imdb;
+              }
+            }catch(e){
+              log('  [FETCH_ERR]', e.message || e, '@', link);
+            }
+          }
+        }
+        await sleep(600);
+      }
+      return null;
+    }
+
+    async function findByKp(kpId) {
+      out.innerHTML = '<em>Ищем IMDb ID через DuckDuckGo…</em>';
+      logEl.textContent = '';
+      try {
+        const imdbId = await kpToImdbViaDDG(kpId);
+        if (!imdbId) {
+          out.innerHTML = '<strong>Не удалось найти IMDb ID по этому Kinopoisk ID (через DDG).</strong>';
+          return;
+        }
+        out.innerHTML = `<em>Найден IMDb ID: ${imdbId}. Загружаем из TMDb…</em>`;
+        await findByImdb(imdbId);
+      } catch (e) {
+        out.textContent = 'Ошибка: ' + e.message;
+        log('KP→IMDb error:', e);
+      }
+    }
+
+    $('#form').addEventListener('submit', e => {
+      e.preventDefault();
+      const id = $('#imdb').value.trim();
+      if (!id) return;
+      findByImdb(id);
+    });
+
+    $('#form-kp').addEventListener('submit', e => {
+      e.preventDefault();
+      const id = $('#kp').value.trim();
+      if (!id) return;
+      findByKp(id);
+    });
+
+    // Автозапуск для примера (IMDb)
+    findByImdb($('#imdb').value);
+  </script>
+</body>
+</html>

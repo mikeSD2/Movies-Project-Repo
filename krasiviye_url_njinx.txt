@@ -1,0 +1,112 @@
+server
+{
+    listen 80;
+    listen 443 ssl http2 ;
+    server_name lordfilmhd-smotret.online www.lordfilmhd-smotret.online;
+    
+    index index.php index.html index.htm default.php default.htm default.html;
+    root /www/wwwroot/lordfilmhd-smotret.online/dist;
+    
+    # --- ВАЖНО: API endpoints должны быть ПЕРЕД общими правилами ---
+    
+    # Проксирование API запросов к Flask (ПЕРЕНЕСЕНО НАВЕРХ)
+    location ~ ^/(add-comment|vote|rate-page)$ {
+        proxy_pass http://127.0.0.1:5000; 
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    # --- НАЧАЛО БЛОКА ДЛЯ КРАСИВЫХ URL ---
+
+    # 1. Внешний редирект для всех .html файлов (кроме index.html)
+    # Удаляет .html из адреса, который видит пользователь.
+    # Пример: /anime/page.html -> /anime/page
+    if ($request_uri ~ ^/(.*)\.html$) {
+        return 301 /$1;
+    }
+
+    # 2. Внешний редирект для index и index.html
+    # Убирает "index" или "index.html" из конца URL.
+    # Пример: /anime/index.html -> /anime/
+    if ($request_uri ~ ^(.*)/index(\.html)?$) {
+        return 301 $1/;
+    }
+
+    # 3. Внутренняя обработка "чистых" URL
+    # Это правило говорит Nginx, как найти нужный файл на диске.
+    location / {
+        try_files $uri $uri/ $uri.html =404;
+    }
+
+    # --- КОНЕЦ БЛОКА ---
+    
+    #CERT-APPLY-CHECK--START
+    # Configuration related to file verification for SSL certificate application - Do not delete
+    include /www/server/panel/vhost/nginx/well-known/lordfilmhd-smotret.online.conf;
+    #CERT-APPLY-CHECK--END
+    #SSL-START SSL related configuration, do NOT delete or modify the next line of commented-out 404 rules
+    #error_page 404/404.html;
+        ssl_certificate    /www/server/panel/vhost/cert/lordfilmhd-smotret.online/fullchain.pem;
+        ssl_certificate_key    /www/server/panel/vhost/cert/lordfilmhd-smotret.online/privkey.pem;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
+        ssl_prefer_server_ciphers on;
+        ssl_session_tickets on;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        add_header Strict-Transport-Security "max-age=31536000";
+        error_page 497  https://$host$request_uri;
+    
+    #SSL-END
+    #referenced redirect rule, if commented, the configured redirect rule will be invalid
+    include /www/server/panel/vhost/nginx/redirect/lordfilmhd-smotret.online/*.conf;
+
+    #ERROR-PAGE-START  Error page configuration, allowed to be commented, deleted or modified
+    error_page 404 /404.html;
+    error_page 502 /502.html;
+    #ERROR-PAGE-END
+
+    #PHP-INFO-START  PHP reference configuration, allowed to be commented, deleted or modified
+    include enable-php-00.conf;
+    #PHP-INFO-END
+
+    #REWRITE-START URL rewrite rule reference, any modification will invalidate the rewrite rules set by the panel
+    include /www/server/panel/vhost/rewrite/lordfilmhd-smotret.online.conf;
+    #REWRITE-END
+
+    # Forbidden files or directories
+    location ~ ^/(\.user.ini|\.htaccess|\.git|\.env|\.svn|\.project|LICENSE|README.md)
+    {
+        return 404;
+    }
+
+    # Directory verification related settings for one-click application for SSL certificate
+    location ~ \.well-known{
+        allow all;
+    }
+
+    #Prohibit putting sensitive files in certificate verification directory
+    if ( $uri ~ "^/\.well-known/.*\.(php|jsp|py|js|css|lua|ts|go|zip|tar\.gz|rar|7z|sql|bak)$" ) {
+        return 403;
+    }
+
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+    {
+        expires      30d;
+        error_log /dev/null;
+        access_log /dev/null;
+    }
+
+    location ~ .*\.(js|css)?$
+    {
+        expires      12h;
+        error_log /dev/null;
+        access_log /dev/null; 
+    }
+    access_log  /www/wwwlogs/lordfilmhd-smotret.online.log;
+    error_log  /www/wwwlogs/lordfilmhd-smotret.online.error.log;
+}
