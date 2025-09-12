@@ -3,10 +3,11 @@
   <div class="carou">
     <div class="carou__caption">Популярные за месяц</div>
     <div class="carou__content carousel-grid" id="top-carou" ref="carousel">
-      <MovieCard 
-        v-for="movie in popularMovies" 
-        :key="movie.id" 
-        :movie="movie" 
+      <MovieCard
+        v-for="(movie, idx) in popularMovies"
+        :key="movie.id"
+        :movie="movie"
+        :priority="idx === 0"
       />
     </div>
   </div>
@@ -14,20 +15,42 @@
   <!-- Секция фильмов -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/filmy" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/filmy"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Фильмы</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': moviesTab === 'latest' }" @click="moviesTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': moviesTab === 'popular' }" @click="moviesTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': moviesTab === 'rating' }" @click="moviesTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': moviesTab === 'latest' }"
+          @click="moviesTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': moviesTab === 'popular' }"
+          :disabled="!!moviesPending"
+          @click="requestMoviesTab('popular')"
+        >
+          <span v-if="moviesPending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': moviesTab === 'rating' }"
+          :disabled="!!moviesPending"
+          @click="requestMoviesTab('rating')"
+        >
+          <span v-if="moviesPending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
     <div class="section__content grid-items">
-      <MovieCard 
-        v-for="movie in displayedMovies" 
-        :key="movie.id" 
-        :movie="movie" 
+      <MovieCard
+        v-for="movie in displayedMovies"
+        :key="movie.id"
+        :movie="movie"
       />
     </div>
   </section>
@@ -35,20 +58,43 @@
   <!-- Секция сериалов -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/serialy" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/serialy"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Сериалы</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': seriesTab === 'latest' }" @click="seriesTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': seriesTab === 'popular' }" @click="seriesTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': seriesTab === 'rating' }" @click="seriesTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': seriesTab === 'latest' }"
+          @click="seriesTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': seriesTab === 'popular' }"
+          :disabled="!!seriesPending"
+          @click="requestSeriesTab('popular')"
+        >
+          <span v-if="seriesPending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': seriesTab === 'rating' }"
+          :disabled="!!seriesPending"
+          @click="requestSeriesTab('rating')"
+        >
+          <span v-if="seriesPending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
-    <div class="section__content grid-items">
-      <MovieCard 
-        v-for="series in displayedSeries" 
-        :key="series.id" 
-        :movie="series" 
+    <div ref="seriesSentinel" class="lazy-sentinel" aria-hidden="true"></div>
+    <div class="section__content grid-items" v-if="seriesVisible">
+      <MovieCard
+        v-for="series in displayedSeries"
+        :key="series.id"
+        :movie="series"
       />
     </div>
   </section>
@@ -56,20 +102,43 @@
   <!-- Секция мультфильмов -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/multfilmy" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/multfilmy"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Мультфильмы</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': cartoonsTab === 'latest' }" @click="cartoonsTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': cartoonsTab === 'popular' }" @click="cartoonsTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': cartoonsTab === 'rating' }" @click="cartoonsTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': cartoonsTab === 'latest' }"
+          @click="cartoonsTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': cartoonsTab === 'popular' }"
+          :disabled="!!cartoonsPending"
+          @click="requestCartoonsTab('popular')"
+        >
+          <span v-if="cartoonsPending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': cartoonsTab === 'rating' }"
+          :disabled="!!cartoonsPending"
+          @click="requestCartoonsTab('rating')"
+        >
+          <span v-if="cartoonsPending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
-    <ol class="section__content grid-items">
-      <MovieCard 
-        v-for="cartoon in displayedCartoons" 
-        :key="cartoon.id" 
-        :movie="cartoon" 
+    <div ref="cartoonsSentinel" class="lazy-sentinel" aria-hidden="true"></div>
+    <ol class="section__content grid-items" v-if="cartoonsVisible">
+      <MovieCard
+        v-for="cartoon in displayedCartoons"
+        :key="cartoon.id"
+        :movie="cartoon"
       />
     </ol>
   </section>
@@ -77,20 +146,43 @@
   <!-- Секция аниме -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/anime" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/anime"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Аниме</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': animeTab === 'latest' }" @click="animeTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': animeTab === 'popular' }" @click="animeTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': animeTab === 'rating' }" @click="animeTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': animeTab === 'latest' }"
+          @click="animeTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': animeTab === 'popular' }"
+          :disabled="!!animePending"
+          @click="requestAnimeTab('popular')"
+        >
+          <span v-if="animePending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': animeTab === 'rating' }"
+          :disabled="!!animePending"
+          @click="requestAnimeTab('rating')"
+        >
+          <span v-if="animePending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
-    <div class="section__content grid-items">
-      <MovieCard 
-        v-for="anime in displayedAnime" 
-        :key="anime.id" 
-        :movie="anime" 
+    <div ref="animeSentinel" class="lazy-sentinel" aria-hidden="true"></div>
+    <div class="section__content grid-items" v-if="animeVisible">
+      <MovieCard
+        v-for="anime in displayedAnime"
+        :key="anime.id"
+        :movie="anime"
       />
     </div>
   </section>
@@ -98,20 +190,43 @@
   <!-- Секция дорам -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/serialy" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/serialy?special=doramas"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Дорамы</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': doramasTab === 'latest' }" @click="doramasTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': doramasTab === 'popular' }" @click="doramasTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': doramasTab === 'rating' }" @click="doramasTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': doramasTab === 'latest' }"
+          @click="doramasTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': doramasTab === 'popular' }"
+          :disabled="!!doramasPending"
+          @click="requestDoramasTab('popular')"
+        >
+          <span v-if="doramasPending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': doramasTab === 'rating' }"
+          :disabled="!!doramasPending"
+          @click="requestDoramasTab('rating')"
+        >
+          <span v-if="doramasPending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
-    <div class="section__content grid-items">
-      <MovieCard 
-        v-for="dorama in displayedDoramas" 
-        :key="dorama.id" 
-        :movie="dorama" 
+    <div ref="doramasSentinel" class="lazy-sentinel" aria-hidden="true"></div>
+    <div class="section__content grid-items" v-if="doramasVisible">
+      <MovieCard
+        v-for="dorama in displayedDoramas"
+        :key="dorama.id"
+        :movie="dorama"
       />
     </div>
   </section>
@@ -119,284 +234,559 @@
   <!-- Секция турецких сериалов -->
   <section class="sect">
     <div class="section__header d-flex ai-center c-gap-20">
-      <router-link to="/serialy" class="section__title fal fa-chevron-right fa-pull-right btn">
+      <router-link
+        to="/serialy?special=turkish"
+        class="section__title fal fa-chevron-right fa-pull-right btn"
+      >
         <h2>Турецкие сериалы</h2>
       </router-link>
       <div class="section__tabs d-flex c-gap-10">
-        <button :class="{ 'is-active': turkishTab === 'latest' }" @click="turkishTab = 'latest'">Последние</button>
-        <button :class="{ 'is-active': turkishTab === 'popular' }" @click="turkishTab = 'popular'">Популярные</button>
-        <button :class="{ 'is-active': turkishTab === 'rating' }" @click="turkishTab = 'rating'">По рейтингу</button>
+        <button
+          :class="{ 'is-active': turkishTab === 'latest' }"
+          @click="turkishTab = 'latest'"
+        >
+          Последние
+        </button>
+        <button
+          :class="{ 'is-active': turkishTab === 'popular' }"
+          :disabled="!!turkishPending"
+          @click="requestTurkishTab('popular')"
+        >
+          <span v-if="turkishPending === 'popular'">Загрузка…</span>
+          <span v-else>Популярные</span>
+        </button>
+        <button
+          :class="{ 'is-active': turkishTab === 'rating' }"
+          :disabled="!!turkishPending"
+          @click="requestTurkishTab('rating')"
+        >
+          <span v-if="turkishPending === 'rating'">Загрузка…</span>
+          <span v-else>По рейтингу</span>
+        </button>
       </div>
     </div>
-    <div class="section__content grid-items">
-      <MovieCard 
-        v-for="ts in displayedTurkish" 
-        :key="ts.id" 
-        :movie="ts" 
-      />
+    <div ref="turkishSentinel" class="lazy-sentinel" aria-hidden="true"></div>
+    <div class="section__content grid-items" v-if="turkishVisible">
+      <MovieCard v-for="ts in displayedTurkish" :key="ts.id" :movie="ts" />
     </div>
   </section>
 
   <!-- Описание сайта -->
   <section class="descr">
-    <h1>Ваш идеальный онлайн-кинотеатр: смотрите фильмы и сериалы бесплатно в лучшем качестве</h1>
-    <p>После долгих рабочих или учебных будней каждому хочется отдохнуть и погрузиться в мир, далекий от повседневных забот. И что может быть лучше, чем смотреть любимые фильмы и сериалы? Мы создали для вас уникальный и максимально удобный онлайн-кинотеатр, где каждый найдет что-то для себя.</p>
-    
+    <h1>
+      Ваш идеальный онлайн-кинотеатр: смотрите фильмы и сериалы бесплатно в
+      лучшем качестве
+    </h1>
+    <p>
+      После долгих рабочих или учебных будней каждому хочется отдохнуть и
+      погрузиться в мир, далекий от повседневных забот. И что может быть лучше,
+      чем смотреть любимые фильмы и сериалы? Мы создали для вас уникальный и
+      максимально удобный онлайн-кинотеатр, где каждый найдет что-то для себя.
+      Забудьте о необходимости искать сеансы в городских кинотеатрах, стоять в
+      очередях за билетами или пытаться успеть на определенное время. Все эти
+      хлопоты остались в прошлом, ведь теперь вы можете смотреть фильмы в
+      отличном HD качестве онлайн прямо на нашем сайте, в любое удобное для вас
+      время. Приглашаем вас окунуться в удивительный мир кинематографа,
+      доступный круглосуточно и совершенно бесплатно!
+    </p>
     <h2>Только лучшие фильмы и сериалы онлайн в гигантской коллекции</h2>
-    <p>Наш главный приоритет — предоставить вам самый широкий выбор контента. В нашем ассортименте вы найдете всё: от вечных шедевров «Золотой эпохи» Голливуда и классического европейского кино до культовых французских комедий, динамичного азиатского кино и любимых многими поколениями советских фильмов.</p>
-    
-    <h2>Наслаждайтесь просмотром где угодно и как угодно</h2>
-    <p>Радостная новость для наших зрителей: теперь наш онлайн-кинотеатр полностью адаптирован для мобильных устройств. Вы можете смотреть любимые фильмы и сериалы не только на компьютере, но и прямо со смартфона или планшета на iPhone, iPad и Android.</p>
+    <p>
+      Наш главный приоритет — предоставить вам самый широкий выбор контента. В
+      нашем ассортименте вы найдете всё: от вечных шедевров «Золотой эпохи»
+      Голливуда и классического европейского кино до культовых французских
+      комедий, динамичного азиатского кино и любимых многими поколений советских
+      фильмов. Мы особенно гордимся нашей подборкой, которая включает
+      современные хиты 2023, 2024 и 2025 годов.
+    </p>
+    <p>
+      Мы собрали для вас внушительную подборку контента на любой вкус. Наша
+      медиатека включает тысячи наименований в самых разных направлениях:
+    </p>
+    <ul>
+      <li>Художественные и документальные фильмы</li>
+
+      <li>Захватывающие боевики и триллеры</li>
+
+      <li>Волшебные фэнтези и фантастика</li>
+
+      <li>Трогательные драмы и мелодрамы</li>
+
+      <li>Искрометные комедии и леденящие кровь ужасы</li>
+
+      <li>Масштабные приключенческие и исторические ленты</li>
+
+      <li>Запутанные детективы и классические вестерны</li>
+
+      <li>
+        Фильмы на военную тематику, сериалы о сыщиках и паранормальных явлениях.
+      </li>
+    </ul>
+    <p>
+      Вы всегда можете найти нужную киноленту, воспользовавшись категориями в
+      меню сайта. Наша цель — удовлетворить запросы самой широкой аудитории,
+      поэтому мы постоянно работаем над расширением коллекции.
+    </p>
+    <h2>Наслаждайтесь просмотром где угодно и как угодновввв</h2>
+    <p>
+      Радостная новость для наших зрителей: теперь наш онлайн-кинотеатр
+      полностью адаптирован для мобильных устройств. Вы можете смотреть любимые
+      фильмы и сериалы не только на компьютере, но и прямо со смартфона или
+      планшета на iPhone, iPad и Android. Находитесь ли вы дома, в дороге или в
+      путешествии в любой точке мира — ваша коллекция кино всегда с вами. Все,
+      что вам нужно, — это доступ в интернет.
+    </p>
+    <p>
+      Мы гарантируем, что все фильмы имеют высокое HD 1080p качество видео и
+      звука, а многие новинки кино доступны даже в качестве 4K. Вам больше не
+      обязательно скачивать тяжелые файлы и занимать место на диске — все можно
+      смотреть в режиме онлайн. Наш сервис отлично работает на любом браузере,
+      обеспечивая плавное и комфортное воспроизведение.
+    </p>
+    <h2>Всегда актуальные новинки и оперативные обновления</h2>
+    <p>
+      Мы тщательно следим за трендами в мировой киноиндустрии и стараемся
+      своевременно добавлять на сайт актуальные новинки. Мы стремимся оперативно
+      добавлять новинки практически сразу после их выхода в кинотеатрах. После
+      официального цифрового релиза мы регулярно обновляем их качество до
+      максимально возможного, включая версии с дисков DVD или Blu-ray. Наш сайт
+      — это настоящее хранилище актуального контента, которое регулярно
+      пополняется.
+    </p>
+    <p>
+      Если вы затрудняетесь с выбором фильма на вечер или не можете найти
+      конкретную ленту, смело обращайтесь в нашу службу поддержки. Мы всегда
+      готовы проконсультировать вас по уже вышедшим фильмам 2024 года, которые
+      можно смотреть онлайн, и постараемся добавить необходимый вам контент.
+      Ваше мнение очень важно для нас, и мы всегда учитываем требования нашей
+      аудитории для развития ресурса.
+    </p>
+    <h2>Удобная навигация и персональные подборки</h2>
+    <p>
+      Мы позаботились о том, чтобы вы легко находили интересующий вас контент.
+      На сайте реализованы удобные фильтры по жанрам, годам выпуска и странам,
+      которые помогут быстро отсортировать фильмы и сериалы. Кроме того, мы
+      регулярно составляем тематические подборки и топы, такие как «топ
+      фильмов», «топ сериалов», «топ мультфильмов» и «топ аниме», чтобы вы
+      всегда были в курсе лучших новинок и признанных шедевров кинематографа.
+      Наша система рекомендаций поможет вам открыть для себя новые захватывающие
+      картины на основе ваших предпочтений.
+    </p>
+    <p>
+      Приглашаем вас смотреть фильмы онлайн, выбирать лучшие ленты, приглашать
+      друзей и делиться впечатлениями. Присоединяйтесь к миллионам довольных
+      зрителей и погружайтесь в увлекательный мир кино вместе с нами — в любое
+      время, сколько угодно и абсолютно бесплатно!
+    </p>
   </section>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import MovieCard from './MovieCard.vue'
-import moviesData from '../../movies-data.json'
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import MovieCard from "./MovieCard.vue";
+import { useHomeFeed } from "../assets/useHomeFeed.js";
+import { setMeta, setOg, setCanonical } from "../assets/seoUtils.js";
 
-const monthMap = {
-  'января': '01', 'февраля': '02', 'марта': '03', 'апреля': '04', 'мая': '05', 'июня': '06',
-  'июля': '07', 'августа': '08', 'сентября': '09', 'октября': '10', 'ноября': '11', 'декабря': '12'
-};
+const feed = useHomeFeed();
 
-const parseRussianDate = (dateString) => {
-  if (!dateString) return null;
-  const parts = dateString.split(' ');
-  if (parts.length < 3) return null;
-  
-  const day = parts[0].padStart(2, '0');
-  const month = monthMap[parts[1]];
-  const year = parts[2];
-  
-  if (!month) return null;
-  
-  const isoDate = `${year}-${month}-${day}`;
-  const date = new Date(isoDate);
-  return isNaN(date.getTime()) ? null : date;
-};
+const popularMovies = computed(() => feed.value.popular || []);
 
-// Получаем данные по категориям
-const allMovies = moviesData.movies.filter(m => m.id !== 'index')
+const moviesTab = ref("latest");
+const seriesTab = ref("latest");
+const cartoonsTab = ref("latest");
+const animeTab = ref("latest");
+const doramasTab = ref("latest");
+const turkishTab = ref("latest");
 
-// Состояние активных табов
-const moviesTab = ref('latest')
-const seriesTab = ref('latest')
-const cartoonsTab = ref('latest')
-const animeTab = ref('latest')
-const doramasTab = ref('latest')
-const turkishTab = ref('latest')
+const moviesPopular = ref([]);
+const moviesRating = ref([]);
+const seriesPopular = ref([]);
+const seriesRating = ref([]);
+const cartoonsPopular = ref([]);
+const cartoonsRating = ref([]);
+const animePopular = ref([]);
+const animeRating = ref([]);
+const doramasPopular = ref([]);
+const doramasRating = ref([]);
+const turkishPopular = ref([]);
+const turkishRating = ref([]);
 
-// Кэш серверных лайков/дизлайков и загрузка
-const ratingsData = ref({})
+const moviesPending = ref(null);
+const seriesPending = ref(null);
+const cartoonsPending = ref(null);
+const animePending = ref(null);
+const doramasPending = ref(null);
+const turkishPending = ref(null);
 
-async function fetchRatings() {
-  try {
-    const response = await fetch('http://localhost:3001/api/all-ratings')
-    if (response.ok) ratingsData.value = await response.json()
-  } catch (e) { console.error('Error fetching ratings:', e) }
-}
-
-// Популярные фильмы (топ-рейтинг)
-const popularMovies = computed(() => {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const recentMovies = allMovies.filter(movie => {
-    const premiereDate = parseRussianDate(movie.premiere);
-    return premiereDate && premiereDate >= thirtyDaysAgo;
-  });
-  
-  let popularRecentMovies = [];
-  if (recentMovies.length > 0) {
-    popularRecentMovies = recentMovies
-      .filter(movie => movie.imdbRating || movie.kpRating)
-      .sort((a, b) => {
-        const ratingA = Math.max(a.imdbRating || 0, a.kpRating || 0);
-        const ratingB = Math.max(b.imdbRating || 0, b.kpRating || 0);
-        return ratingB - ratingA;
-      });
-  }
-  
-  const desiredCount = 12;
-
-  if (popularRecentMovies.length >= desiredCount) {
-    return popularRecentMovies.slice(0, desiredCount);
-  }
-
-  // Дополняем список самыми популярными за все время, если не хватает
-  const recentMovieIds = new Set(popularRecentMovies.map(m => m.id));
-
-  const allTimePopular = allMovies
-    .filter(movie => movie.imdbRating || movie.kpRating)
-    .sort((a, b) => {
-      const ratingA = Math.max(a.imdbRating || 0, a.kpRating || 0);
-      const ratingB = Math.max(b.imdbRating || 0, b.kpRating || 0);
-      return ratingB - ratingA;
-    });
-
-  const additionalMovies = allTimePopular
-    .filter(movie => !recentMovieIds.has(movie.id))
-    .slice(0, desiredCount - popularRecentMovies.length);
-
-  return [...popularRecentMovies, ...additionalMovies];
+const displayedMovies = computed(() => {
+  if (moviesTab.value === "popular") return moviesPopular.value;
+  if (moviesTab.value === "rating") return moviesRating.value;
+  return feed.value.sections?.filmy?.latest || [];
+});
+const displayedSeries = computed(() => {
+  if (seriesTab.value === "popular") return seriesPopular.value;
+  if (seriesTab.value === "rating") return seriesRating.value;
+  return feed.value.sections?.serialy?.latest || [];
+});
+const displayedCartoons = computed(() => {
+  if (cartoonsTab.value === "popular") return cartoonsPopular.value;
+  if (cartoonsTab.value === "rating") return cartoonsRating.value;
+  return feed.value.sections?.multfilmy?.latest || [];
+});
+const displayedAnime = computed(() => {
+  if (animeTab.value === "popular") return animePopular.value;
+  if (animeTab.value === "rating") return animeRating.value;
+  return feed.value.sections?.anime?.latest || [];
+});
+const displayedDoramas = computed(() => {
+  if (doramasTab.value === "popular") return doramasPopular.value;
+  if (doramasTab.value === "rating") return doramasRating.value;
+  return feed.value.sections?.doramas?.latest || [];
+});
+const displayedTurkish = computed(() => {
+  if (turkishTab.value === "popular") return turkishPopular.value;
+  if (turkishTab.value === "rating") return turkishRating.value;
+  return feed.value.sections?.turkish?.latest || [];
 });
 
-// Логика для отображения контента в секциях
-const getSortedMovies = (category, sortBy) => {
-  const movies = allMovies.filter(movie => movie.category === category);
+// Lazy-mount flags
+const seriesVisible = ref(false);
+const cartoonsVisible = ref(false);
+const animeVisible = ref(false);
+const doramasVisible = ref(false);
+const turkishVisible = ref(false);
 
-  const getPageLikes = (movie) => {
-    const rec = ratingsData.value?.[movie.id]
-    return rec ? (rec.pageLikes || 0) : 0
-  }
-  
-  if (sortBy === 'latest' || sortBy === 'popular') {
-    const oneYearAgo = new Date();
-    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-    const recentMovies = movies.filter(movie => {
-      const premiereDate = parseRussianDate(movie.premiere);
-      return premiereDate && premiereDate >= oneYearAgo;
+// Sentinels
+const seriesSentinel = ref(null);
+const cartoonsSentinel = ref(null);
+const animeSentinel = ref(null);
+const doramasSentinel = ref(null);
+const turkishSentinel = ref(null);
+
+let lazyIO = null;
+
+// Подгрузка вкладок из /api/category (поддерживает sort=rating|popularity и special)
+async function fetchTab(listRef, name, sort, extra = {}) {
+  try {
+    const params = new URLSearchParams({
+      name,
+      page: "1",
+      limit: "24",
+      sort
     });
-
-    if (sortBy === 'popular') {
-      return [...recentMovies].sort((a, b) => getPageLikes(b) - getPageLikes(a)).slice(0, 24);
+    if (extra.special) params.set("special", String(extra.special));
+    const r = await fetch(`/api/category?${params.toString()}`);
+    if (r.ok) {
+      const j = await r.json();
+      listRef.value = j.items || [];
     }
-    // latest
-    return [...recentMovies]
-      .sort((a, b) => (parseRussianDate(b.premiere)?.getTime() || 0) - (parseRussianDate(a.premiere)?.getTime() || 0))
-      .slice(0, 24);
-  }
+  } catch {}
+}
 
-  // rating
-  const twoYearsAgo = new Date();
-  twoYearsAgo.setDate(twoYearsAgo.getDate() - (365 * 2));
-  const moviesForRating = movies.filter(movie => {
-    const premiereDate = parseRussianDate(movie.premiere);
-    return premiereDate && premiereDate >= twoYearsAgo;
+const inFlight = new Map();
+
+async function ensureTab(listRef, name, sort, extra = {}) {
+  if (Array.isArray(listRef.value) && listRef.value.length) return;
+  const key = JSON.stringify({ name, sort, special: String(extra.special || '') });
+  if (inFlight.has(key)) return inFlight.get(key);
+  const p = (async () => {
+    await fetchTab(listRef, name, sort, extra);
+  })();
+  inFlight.set(key, p.finally(() => inFlight.delete(key)));
+  return p;
+}
+
+async function requestMoviesTab(tab) {
+  if (tab === moviesTab.value) return;
+  if (tab === 'popular') {
+    if (!moviesPopular.value.length) {
+      moviesPending.value = 'popular';
+      try {
+        await ensureTab(moviesPopular, 'filmy', 'popularity');
+        moviesTab.value = 'popular';
+      } finally {
+        moviesPending.value = null;
+      }
+      return;
+    }
+    moviesTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!moviesRating.value.length) {
+      moviesPending.value = 'rating';
+      try {
+        await ensureTab(moviesRating, 'filmy', 'rating');
+        moviesTab.value = 'rating';
+      } finally {
+        moviesPending.value = null;
+      }
+      return;
+    }
+    moviesTab.value = 'rating';
+  } else {
+    moviesTab.value = 'latest';
+  }
+}
+
+async function requestSeriesTab(tab) {
+  if (tab === seriesTab.value) return;
+  if (tab === 'popular') {
+    if (!seriesPopular.value.length) {
+      seriesPending.value = 'popular';
+      try {
+        await ensureTab(seriesPopular, 'serialy', 'popularity');
+        seriesTab.value = 'popular';
+      } finally {
+        seriesPending.value = null;
+      }
+      return;
+    }
+    seriesTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!seriesRating.value.length) {
+      seriesPending.value = 'rating';
+      try {
+        await ensureTab(seriesRating, 'serialy', 'rating');
+        seriesTab.value = 'rating';
+      } finally {
+        seriesPending.value = null;
+      }
+      return;
+    }
+    seriesTab.value = 'rating';
+  } else {
+    seriesTab.value = 'latest';
+  }
+}
+
+async function requestCartoonsTab(tab) {
+  if (tab === cartoonsTab.value) return;
+  if (tab === 'popular') {
+    if (!cartoonsPopular.value.length) {
+      cartoonsPending.value = 'popular';
+      try {
+        await ensureTab(cartoonsPopular, 'multfilmy', 'popularity');
+        cartoonsTab.value = 'popular';
+      } finally {
+        cartoonsPending.value = null;
+      }
+      return;
+    }
+    cartoonsTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!cartoonsRating.value.length) {
+      cartoonsPending.value = 'rating';
+      try {
+        await ensureTab(cartoonsRating, 'multfilmy', 'rating');
+        cartoonsTab.value = 'rating';
+      } finally {
+        cartoonsPending.value = null;
+      }
+      return;
+    }
+    cartoonsTab.value = 'rating';
+  } else {
+    cartoonsTab.value = 'latest';
+  }
+}
+
+async function requestAnimeTab(tab) {
+  if (tab === animeTab.value) return;
+  if (tab === 'popular') {
+    if (!animePopular.value.length) {
+      animePending.value = 'popular';
+      try {
+        await ensureTab(animePopular, 'anime', 'popularity');
+        animeTab.value = 'popular';
+      } finally {
+        animePending.value = null;
+      }
+      return;
+    }
+    animeTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!animeRating.value.length) {
+      animePending.value = 'rating';
+      try {
+        await ensureTab(animeRating, 'anime', 'rating');
+        animeTab.value = 'rating';
+      } finally {
+        animePending.value = null;
+      }
+      return;
+    }
+    animeTab.value = 'rating';
+  } else {
+    animeTab.value = 'latest';
+  }
+}
+
+async function requestDoramasTab(tab) {
+  if (tab === doramasTab.value) return;
+  if (tab === 'popular') {
+    if (!doramasPopular.value.length) {
+      doramasPending.value = 'popular';
+      try {
+        await ensureTab(doramasPopular, 'serialy', 'popularity', { special: 'doramas' });
+        doramasTab.value = 'popular';
+      } finally {
+        doramasPending.value = null;
+      }
+      return;
+    }
+    doramasTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!doramasRating.value.length) {
+      doramasPending.value = 'rating';
+      try {
+        await ensureTab(doramasRating, 'serialy', 'rating', { special: 'doramas' });
+        doramasTab.value = 'rating';
+      } finally {
+        doramasPending.value = null;
+      }
+      return;
+    }
+    doramasTab.value = 'rating';
+  } else {
+    doramasTab.value = 'latest';
+  }
+}
+
+async function requestTurkishTab(tab) {
+  if (tab === turkishTab.value) return;
+  if (tab === 'popular') {
+    if (!turkishPopular.value.length) {
+      turkishPending.value = 'popular';
+      try {
+        await ensureTab(turkishPopular, 'serialy', 'popularity', { special: 'turkish' });
+        turkishTab.value = 'popular';
+      } finally {
+        turkishPending.value = null;
+      }
+      return;
+    }
+    turkishTab.value = 'popular';
+  } else if (tab === 'rating') {
+    if (!turkishRating.value.length) {
+      turkishPending.value = 'rating';
+      try {
+        await ensureTab(turkishRating, 'serialy', 'rating', { special: 'turkish' });
+        turkishTab.value = 'rating';
+      } finally {
+        turkishPending.value = null;
+      }
+      return;
+    }
+    turkishTab.value = 'rating';
+  } else {
+    turkishTab.value = 'latest';
+  }
+}
+
+function prefetchAllTabs() {
+  const tasks = [
+    ensureTab(moviesPopular, "filmy", "popularity"),
+    ensureTab(moviesRating, "filmy", "rating"),
+
+    ensureTab(seriesPopular, "serialy", "popularity"),
+    ensureTab(seriesRating, "serialy", "rating"),
+
+    ensureTab(cartoonsPopular, "multfilmy", "popularity"),
+    ensureTab(cartoonsRating, "multfilmy", "rating"),
+
+    ensureTab(animePopular, "anime", "popularity"),
+    ensureTab(animeRating, "anime", "rating"),
+
+    ensureTab(doramasPopular, "serialy", "popularity", { special: "doramas" }),
+    ensureTab(doramasRating, "serialy", "rating", { special: "doramas" }),
+
+    ensureTab(turkishPopular, "serialy", "popularity", { special: "turkish" }),
+    ensureTab(turkishRating, "serialy", "rating", { special: "turkish" })
+  ];
+  return Promise.allSettled(tasks);
+}
+
+
+// Пример: по клику на таб меняйте computed на ref и подкачивайте
+// (если нужно — могу доделать логику табов под вашу верстку)
+
+onMounted(() => {
+  if (typeof window === 'undefined') return;
+
+  // стартуем прелоад всех вкладок сразу (без ожидания остальных инициализаций)
+  prefetchAllTabs();
+
+  const origin = window.location.origin;
+  const title = "LordFilm — фильмы, сериалы и аниме онлайн";
+  const desc = "Смотрите фильмы, сериалы и аниме онлайн в HD. Без регистрации — LordFilm.";
+  document.title = title;
+  setMeta("description", desc);
+  setOg("og:type", "website");
+  setOg("og:title", title);
+  setOg("og:description", desc);
+  setOg("og:url", origin + "/");
+  setCanonical(origin + "/");
+
+  setTimeout(() => {
+    const first = popularMovies?.value?.[0];
+    if (first?.image) {
+      const href = first.image.startsWith('http') ? first.image : `/${first.image}`;
+      const l = document.createElement('link');
+      l.rel = 'preload';
+      l.as = 'image';
+      l.href = href;
+      document.head.appendChild(l);
+    }
+  }, 0);
+
+  // IntersectionObserver for lazy sections
+  const pairs = [
+    [seriesSentinel, 'series'],
+    [cartoonsSentinel, 'cartoons'],
+    [animeSentinel, 'anime'],
+    [doramasSentinel, 'doramas'],
+    [turkishSentinel, 'turkish']
+  ];
+  const setVisible = (name) => {
+    if (name === 'series') seriesVisible.value = true;
+    if (name === 'cartoons') cartoonsVisible.value = true;
+    if (name === 'anime') animeVisible.value = true;
+    if (name === 'doramas') doramasVisible.value = true;
+    if (name === 'turkish') turkishVisible.value = true;
+  };
+  lazyIO = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const name = entry.target && entry.target.dataset && entry.target.dataset.section;
+        if (name) setVisible(name);
+        if (lazyIO) lazyIO.unobserve(entry.target);
+      }
+    });
+  }, { root: null, rootMargin: '200px 0px', threshold: 0.1 });
+
+  pairs.forEach(([r, name]) => {
+    if (r && r.value) {
+      r.value.dataset.section = name;
+      lazyIO.observe(r.value);
+    }
   });
 
-  return [...moviesForRating].sort((a, b) => {
-    const ratingA = Math.max(a.imdbRating || 0, a.kpRating || 0)
-    const ratingB = Math.max(b.imdbRating || 0, b.kpRating || 0)
-    return ratingB - ratingA
-  }).slice(0, 24);
-}
-
-// Универсальная сортировка произвольного списка
-const getSortedFromList = (list, sortBy) => {
-  const getPageLikes = (movie) => {
-    const rec = ratingsData.value?.[movie.id]
-    return rec ? (rec.pageLikes || 0) : 0
-  }
-
-  if (sortBy === 'latest' || sortBy === 'popular') {
-    const oneYearAgo = new Date();
-    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-    const recentMovies = list.filter(movie => {
-      const premiereDate = parseRussianDate(movie.premiere);
-      return premiereDate && premiereDate >= oneYearAgo;
-    });
-
-    if (sortBy === 'popular') {
-      return [...recentMovies].sort((a, b) => getPageLikes(b) - getPageLikes(a)).slice(0, 24);
-    }
-    // latest
-    return [...recentMovies]
-      .sort((a, b) => (parseRussianDate(b.premiere)?.getTime() || 0) - (parseRussianDate(a.premiere)?.getTime() || 0))
-      .slice(0, 24);
-  }
-
-  // rating
-  const twoYearsAgo = new Date();
-  twoYearsAgo.setDate(twoYearsAgo.getDate() - (365 * 2));
-  const moviesForRating = list.filter(movie => {
-    const premiereDate = parseRussianDate(movie.premiere);
-    return premiereDate && premiereDate >= twoYearsAgo;
-  });
-
-  return [...moviesForRating].sort((a, b) => {
-    const ratingA = Math.max(a.imdbRating || 0, a.kpRating || 0)
-    const ratingB = Math.max(b.imdbRating || 0, b.kpRating || 0)
-    return ratingB - ratingA
-  }).slice(0, 24);
-}
-
-const displayedMovies = computed(() => getSortedMovies('filmy', moviesTab.value));
-const displayedSeries = computed(() => getSortedMovies('serialy', seriesTab.value));
-const displayedCartoons = computed(() => getSortedMovies('multfilmy', cartoonsTab.value));
-const displayedAnime = computed(() => getSortedMovies('anime', animeTab.value));
-
-// Фильтры для дорам и турецких сериалов
-const asianKeywords = [
-  'южная корея','корея','северная корея',
-  'япония','китай','тайвань','гонконг',
-  'таиланд','индонезия','малайзия','вьетнам',
-  'сингапур','филиппины'
-]
-const isAsianCountry = (countryStr) => {
-  if (!countryStr) return false
-  const s = String(countryStr).toLowerCase()
-  return asianKeywords.some(k => s.includes(k))
-}
-const isTurkish = (countryStr) => /турция/i.test(countryStr || '')
-
-const doramasList = computed(() =>
-  allMovies.filter(m => m.category === 'serialy' && isAsianCountry(m.country) && !isTurkish(m.country))
-)
-const turkishList = computed(() =>
-  allMovies.filter(m => m.category === 'serialy' && isTurkish(m.country))
-)
-
-const displayedDoramas = computed(() => getSortedFromList(doramasList.value, doramasTab.value))
-const displayedTurkish = computed(() => getSortedFromList(turkishList.value, turkishTab.value))
-
-// Последние фильмы
-const latestMovies = computed(() => {
-  return allMovies
-    .filter(movie => movie.category === 'filmy')
-    .sort((a, b) => b.year - a.year)
-    .slice(0, 24)
-})
-
-// Последние сериалы
-const latestSeries = computed(() => {
-  return allMovies
-    .filter(movie => movie.category === 'serialy')
-    .sort((a, b) => b.year - a.year)
-    .slice(0, 24)
-})
-
-// Последние мультфильмы
-const latestCartoons = computed(() => {
-  return allMovies
-    .filter(movie => movie.category === 'multfilmy')
-    .sort((a, b) => b.year - a.year)
-    .slice(0, 24)
-})
-
-// Последние аниме
-const latestAnime = computed(() => {
-  return allMovies
-    .filter(movie => movie.category === 'anime')
-    .sort((a, b) => b.year - a.year)
-    .slice(0, 24)
-})
+  // УДАЛЕНО: вызовы несуществующей fetchCategorySorted(...)
+  // Раньше здесь были отдельные вызовы — они ломали выполнение.
+});
 
 // Карусель функциональность (Owl Carousel)
-const carousel = ref(null)
+const carousel = ref(null);
 
 onMounted(async () => {
-  await fetchRatings()
+  // jQuery уже подгружается глобально в <head>; фолбэк на случай отсутствия
+  if (!window.jQuery && !window.$) {
+    const { default: $ } = await import("jquery");
+    window.jQuery = $;
+    window.$ = $;
+  }
 
-  // 1) jQuery
-  const { default: $ } = await import('jquery')
-  window.jQuery = $; window.$ = $;
+  // Флаг защиты от авто‑инициализации (на случай SPA-навигации)
+  window.__OWL_NO_AUTO_INIT = true;
 
-  // 2) Флаг для отключения авто-init в плагине
-  window.__OWL_NO_AUTO_INIT = true
-
-  // Опции карусели
   const owlOptions = {
     loop: false,
     rewind: true,
@@ -408,60 +798,64 @@ onMounted(async () => {
     slideBy: 1,
     responsiveClass: true,
     autoRefresh: false,
-    navText: ['<span class="fal fa-chevron-left"></span>', '<span class="fal fa-chevron-right"></span>'],
-    responsive: { 0:{items:2}, 470:{items:3}, 590:{items:3}, 760:{items:4}, 950:{items:5}, 1220:{items:6} }
-  }
+    navText: [
+      '<span class="fal fa-chevron-left"></span>',
+      '<span class="fal fa-chevron-right"></span>',
+    ],
+    responsive: {
+      0: { items: 2 },
+      470: { items: 3 },
+      590: { items: 3 },
+      760: { items: 4 },
+      950: { items: 5 },
+      1220: { items: 6 },
+    },
+  };
 
   const initOwl = () => {
-    if (!carousel.value || !window.jQuery) return
-    const $el = window.jQuery(carousel.value)
-    if ($el.data('owl.carousel')) {
-      $el.trigger('refresh.owl.carousel')
+    if (!carousel.value || !window.jQuery) return;
+    const $el = window.jQuery(carousel.value);
+    if ($el.data("owl.carousel")) {
+      $el.trigger("refresh.owl.carousel");
     } else {
-      $el.addClass('owl-carousel').owlCarousel(owlOptions)
+      $el.addClass("owl-carousel").owlCarousel(owlOptions);
     }
-  }
+  };
 
   const destroyOwl = () => {
-    if (!carousel.value || !window.jQuery) return
-    const $el = window.jQuery(carousel.value)
-    if ($el.data('owl.carousel')) {
-      $el.trigger('destroy.owl.carousel')
-      $el.removeClass('owl-carousel')
+    if (!carousel.value || !window.jQuery) return;
+    const $el = window.jQuery(carousel.value);
+    if ($el.data("owl.carousel")) {
+      $el.trigger("destroy.owl.carousel");
+      $el.removeClass("owl-carousel");
     }
+  };
+
+  // Скрипт плагина уже добавлен в <head> — просто инициализируем
+  if (document.querySelector('script[src="/vendor/owl-carousel.js"]')) {
+    initOwl();
   }
 
-  // 3) Вставляем скрипт один раз
-  const src = '/vendor/owl-carousel.js'
-  if (!document.querySelector(`script[src="${src}"]`)) {
-    const s = document.createElement('script')
-    s.src = src
-    s.onload = () => initOwl()
-    document.head.appendChild(s)
-  } else {
-    // Скрипт уже загружен — init/refresh (SPA возврат на главную)
-    initOwl()
-  }
-
-  // Инициализация при возврате по «назад»
-  const { onActivated, onDeactivated } = await import('vue')
-  onActivated(() => initOwl())
-  onDeactivated(() => destroyOwl())
-
-  // Сделаем доступным для onBeforeUnmount
-  window.__destroyHomeOwl = destroyOwl
-})
+  const { onActivated, onDeactivated } = await import("vue");
+  onActivated(() => initOwl());
+  onDeactivated(() => destroyOwl());
+  window.__destroyHomeOwl = destroyOwl;
+});
 
 onBeforeUnmount(() => {
   if (window.__onRatingsUpdated) {
-    window.removeEventListener('ratings-updated', window.__onRatingsUpdated)
-    delete window.__onRatingsUpdated
+    window.removeEventListener("ratings-updated", window.__onRatingsUpdated);
+    delete window.__onRatingsUpdated;
   }
   if (window.__destroyHomeOwl) {
-    window.__destroyHomeOwl()
-    delete window.__destroyHomeOwl
+    window.__destroyHomeOwl();
+    delete window.__destroyHomeOwl;
   }
-})
+  if (lazyIO) {
+    lazyIO.disconnect();
+    lazyIO = null;
+  }
+});
 </script>
 
 <style scoped>
