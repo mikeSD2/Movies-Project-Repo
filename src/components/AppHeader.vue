@@ -17,15 +17,15 @@
           </ul>
           <ul class="navbar__nav-hidden-col">
             <li>По жанрам:</li>
-            <li><a href="#" @click.prevent="navigate('/filmy?genre=Биографические')">Биографические</a></li>
+            <li><a href="#" @click.prevent="navigate('/filmy?genre=Биография')">Биографические</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Боевик')">Боевики</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Вестерн')">Вестерны</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Военный')">Военные</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Документальный')">Документальные</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Детектив')">Детективы</a></li>
-            <li><a href="#" @click.prevent="navigate('/filmy?genre=Детский')">Детские</a></li>
+            <li><a href="#" @click.prevent="navigate('/filmy?genre=Семейный')">Детские</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Драма')">Драмы</a></li>
-            <li><a href="#" @click.prevent="navigate('/filmy?genre=Исторический')">Исторические</a></li>
+            <li><a href="#" @click.prevent="navigate('/filmy?genre=История')">Исторические</a></li>
             <li><a href="#" @click.prevent="navigate('/filmy?genre=Комедия')">Комедии</a></li>
           </ul>
           <ul class="navbar__nav-hidden-col">
@@ -60,21 +60,21 @@
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Боевик')">Боевик</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Вестерн')">Вестерн</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Военный')">Военный</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Документальный')">Документальный</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Детектив')">Детектив</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Детский')">Детский</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Драма')">Драма</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Документальный')">Документальные</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Детектив')">Детективные</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Семейный')">Детские</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Драма')">Драмы</a></li>
           </ul>
           <ul class="navbar__nav-hidden-col">
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Исторический')">Исторический</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Комедия')">Комедия</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=История')">Исторические</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Комедия')">Комедии</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Криминал')">Криминал</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Мелодрама')">Мелодрама</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Мелодрама')">Мелодрамы</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Музыка')">Музыка</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Приключения')">Приключения</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Семейный')">Семейный</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Семейный')">Семейные</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Спорт')">Спорт</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?genre=Триллер')">Триллер</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?genre=Триллер')">Триллеры</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Ужасы')">Ужасы</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Фантастика')">Фантастика</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?genre=Фэнтези')">Фэнтези</a></li>
@@ -112,7 +112,7 @@
               <div class="suggestion-genres">{{ suggestion.genres.join(', ') }}</div>
               <div class="suggestion-ratings">
                 <span v-if="suggestion.kpRating" class="rating-kp">KP: {{ suggestion.kpRating }}</span>
-                <span v-if="suggestion.imdbRating" class="rating-imdb">IMDb: {{ suggestion.imdbRating }}</span>
+                <span v-if="suggestion.imdbRating" class="rating-imdb">IMDb: {{ formatRating(suggestion.imdbRating) }}</span>
               </div>
             </div>
           </li>
@@ -148,6 +148,15 @@ const searchContainer = ref(null)
 
 let debounceTimer
 
+function formatRating(val) {
+  const n = parseFloat(String(val).replace(',', '.'))
+  if (!isFinite(n)) return String(val ?? '')
+  const rounded = Math.round(n * 10) / 10
+  return Math.abs(rounded - Math.round(rounded)) < 1e-9
+    ? String(Math.round(rounded))
+    : rounded.toFixed(1)
+}
+
 const getPosterUrl = (posterPath) => {
   if (!posterPath) return '/assets/lordfilm-website/images/no-poster.jpg'
   if (posterPath.startsWith('http')) return posterPath
@@ -164,7 +173,7 @@ watch(searchInput, (newValue) => {
   debounceTimer = setTimeout(async () => {
     if (newValue.length > 0) {
       try {
-        const response = await fetch(`http://localhost:3001/api/search-suggestions?q=${newValue}`)
+        const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(newValue)}`)
         if (response.ok) {
           const data = await response.json()
           suggestions.value = data

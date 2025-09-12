@@ -36,13 +36,14 @@ coverage.*
 htmlcov/
 
 # Загруженные/временные данные
-uploads/
+uploads/ 
 server-data/
 chrome_profile/
 
 # Генерируемые/временные файлы
 movies-data.json
 movies-data.json.*
+*.ndjson
 kinopoisk_movies_*.txt
 progress.json
 progress_last_movies.json

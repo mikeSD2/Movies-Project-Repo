@@ -2,7 +2,7 @@
   <div class="item link-exp_ing grid-items__item">
     <div class="media__img img-block ratio-2-3 img-mask">
       <img :src="imageSrc" :alt="movie.title" loading="lazy">
-      <div v-if="movie.season" class="media__label">{{ movie.season }}</div>
+      <div v-if="movie.season || movie.episode" class="media__label">{{ [movie.season, movie.episode].filter(Boolean).join(' ') }}</div>
       <div 
         class="media__btn-info btn btn-square fa-1.3x fal fa-info-circle anim"
         @mouseenter="showTooltip"
@@ -24,7 +24,7 @@
           {{ movie.kpRating }}
         </div>
         <div v-if="movie.imdbRating" class="media__rates-item imdb" data-text="IMDB">
-          {{ movie.imdbRating }}
+          {{ formatRating(movie.imdbRating) }}
         </div>
       </div>
     </div>
@@ -42,12 +42,16 @@
 import { computed, ref, onUnmounted } from 'vue'
 import TrailerPopup from './TrailerPopup.vue'
 
-const props = defineProps({
-  movie: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps({ movie: { type: Object, required: true } })
+
+function formatRating(val) {
+  const n = parseFloat(String(val).replace(',', '.'))
+  if (!isFinite(n)) return String(val ?? '')
+  const rounded = Math.round(n * 10) / 10
+  return Math.abs(rounded - Math.round(rounded)) < 1e-9
+    ? String(Math.round(rounded))
+    : rounded.toFixed(1)
+}
 
 // Refs
 const infoBtn = ref(null)
@@ -100,8 +104,13 @@ const showTooltip = () => {
     tooltipEl.style.top = top + 'px'
     tooltipEl.style.display = 'block'
     
+    const seasonEpisode = [props.movie.season, props.movie.episode].filter(Boolean).join(' ')
+    const headerSmall = seasonEpisode ? `(${seasonEpisode} | ${props.movie.year})` : `(${props.movie.year})`
+
+    const imdbTxt = props.movie.imdbRating ? formatRating(props.movie.imdbRating) : ''
+
     tooltipEl.innerHTML = `
-      <h1>${props.movie.title} <small>${props.movie.season ? `(${props.movie.season} | ${props.movie.year})` : `(${props.movie.year})`}</small></h1>
+      <h1>${props.movie.title} <small>${headerSmall}</small></h1>
       <div class="rich-text">${props.movie.description}</div>
       <ul class="content-page__list">
         ${props.movie.originalTitle ? `<li><span>Название:</span><span>${props.movie.originalTitle}</span></li>` : ''}
@@ -111,10 +120,9 @@ const showTooltip = () => {
         ${props.movie.director ? `<li><span>Режиссер:</span>${props.movie.director}</li>` : ''}
         ${props.movie.genres && props.movie.genres.length ? `<li><span>Жанр:</span>${props.movie.genres.join(', ')}</li>` : ''}
         ${props.movie.translation ? `<li><span>Перевод:</span>${props.movie.translation}</li>` : ''}
-        ${props.movie.ageRating ? `<li><span>Возраст:</span>${props.movie.ageRating}</li>` : ''}
         ${props.movie.kpRating || props.movie.imdbRating ? `<li class="content-page__list-rates d-flex ai-center c-gap-20">
           ${props.movie.kpRating ? `<div class="content-page__list-rates-item kp">${props.movie.kpRating}</div>` : ''}
-          ${props.movie.imdbRating ? `<div class="content-page__list-rates-item imdb">${props.movie.imdbRating}</div>` : ''}
+          ${props.movie.imdbRating ? `<div class="content-page__list-rates-item imdb">${imdbTxt}</div>` : ''}
         </li>` : ''}
         ${props.movie.actors ? `<li class="content-page__list-wide"><span>В ролях:</span>${props.movie.actors}</li>` : ''}
       </ul>

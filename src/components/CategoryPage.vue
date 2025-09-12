@@ -22,6 +22,7 @@
         <select v-model="sortBy" @change="applyFilters" class="filter-select">
           <option value="year">По году</option>
           <option value="rating">По рейтингу</option>
+          <option value="popularity">По популярности</option>
           <option value="title">По названию</option>
         </select>
       </div>
@@ -87,6 +88,7 @@ const selectedGenre = ref('')
 const selectedCountry = ref('')
 const selectedTranslation = ref('')
 const sortBy = ref('year')
+const selectedActor = ref('')
 
 // Спец-фильтр из меню: doramas/turkish
 const specialFilter = ref('')
@@ -160,7 +162,14 @@ const filteredMovies = computed(() => {
       movie.country && movie.country.includes(selectedCountry.value)
     )
   }
-  
+
+  // Фильтр по актёру
+  if (selectedActor.value) {
+    filtered = filtered.filter(movie =>
+      movie.actors && movie.actors.includes(selectedActor.value)
+    )
+  }
+
   // Фильтр по переводу
   if (selectedTranslation.value) {
     filtered = filtered.filter(movie => 
@@ -177,6 +186,8 @@ const filteredMovies = computed(() => {
         const ratingA = Math.max(a.imdbRating || 0, a.kpRating || 0)
         const ratingB = Math.max(b.imdbRating || 0, b.kpRating || 0)
         return ratingB - ratingA
+      case 'popularity':
+        return (b.popularity || 0) - (a.popularity || 0)
       case 'title':
         return a.title.localeCompare(b.title)
       default:
@@ -208,22 +219,40 @@ const hasMoreItems = computed(() => {
 
 // Видимые страницы пагинации
 const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = Math.min(Math.max(1, currentPage.value), total)
+
+  // Для небольшого количества страниц — показываем все
+  if (total <= 10) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+
   const pages = []
-  const start = Math.max(1, currentPage.value - 2)
-  const end = Math.min(totalPages.value, start + 4)
-  
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
-  }
-  
-  // Добавляем многоточие и последнюю страницу если нужно
-  if (end < totalPages.value && totalPages.value > 10) {
-    if (end < totalPages.value - 1) {
-      pages.push('...')
-    }
-    pages.push(totalPages.value)
-  }
-  
+  const windowSize = 5
+
+  // Базовое окно вокруг текущей страницы
+  let start = Math.max(2, current - Math.floor(windowSize / 2))
+  let end = Math.min(total - 1, start + windowSize - 1)
+
+  // Если упираемся вправо — сдвигаем окно влево
+  start = Math.max(2, Math.min(start, (total - 1) - (windowSize - 1)))
+  end = Math.min(total - 1, start + windowSize - 1)
+
+  // Первая страница
+  pages.push(1)
+
+  // Многоточие после первой, если окно дальше
+  if (start > 2) pages.push('...')
+
+  // Окно страниц
+  for (let i = start; i <= end; i++) pages.push(i)
+
+  // Многоточие перед последней, если окно не упирается
+  if (end < total - 1) pages.push('...')
+
+  // Последняя страница
+  pages.push(total)
+
   return pages
 })
 
@@ -265,11 +294,17 @@ const handleUrlParams = () => {
   } else {
     selectedCountry.value = ''
   }
+  if (route.query.actor) {
+    selectedActor.value = decodeURIComponent(route.query.actor)
+  } else {
+    selectedActor.value = ''
+  }
   if (route.query.translation) {
     selectedTranslation.value = decodeURIComponent(route.query.translation)
   } else {
     selectedTranslation.value = ''
   }
+  
   specialFilter.value = route.query.special ? String(route.query.special) : ''
 }
 
