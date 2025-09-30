@@ -474,6 +474,7 @@ async function fetchTab(listRef, name, sort, extra = {}) {
       sort
     });
     if (extra.special) params.set("special", String(extra.special));
+    params.set("home", "1");
     const r = await fetch(`/api/category?${params.toString()}`);
     if (r.ok) {
       const j = await r.json();
