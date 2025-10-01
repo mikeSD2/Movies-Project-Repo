@@ -71,7 +71,7 @@ async function createServerApp() {
         } else if (file.endsWith(".css")) {
           // non-blocking CSS
           links += `<link rel="preload" as="style" href="/${file}" onload="this.onload=null;this.rel='stylesheet'">` +
-                   `<noscript><link rel="stylesheet" href="/${file}"></noscript>`;
+            `<noscript><link rel="stylesheet" href="/${file}"></noscript>`;
         } else if (file.endsWith(".woff2") || file.endsWith(".woff")) {
           const type = file.endsWith(".woff2") ? "font/woff2" : "font/woff";
           links += `<link rel="preload" href="/${file}" as="font" type="${type}" crossorigin>`;
@@ -180,6 +180,23 @@ async function createServerApp() {
   function isTurkish(countryStr) {
     return /турция/i.test(countryStr || "");
   }
+  function isRussianCountry(countryStr) {
+    return /росси/i.test(countryStr || "");
+  }
+  function passPopularity(m, special) {
+    const p = Number(m.popularity || 0);
+    if (String(special) === "doramas") {
+      const t = Number(process.env.HOME_POP_DORAMAS || process.env.HOME_POP_DEFAULT || 5);
+      return p >= t;
+    }
+    if (String(special) === "turkish") {
+      const t = Number(process.env.HOME_POP_TURKISH || process.env.HOME_POP_DEFAULT || 5);
+      return p >= t;
+    }
+    const tRu = Number(process.env.HOME_POP_RU || 4);
+    const tDefault = Number(process.env.HOME_POP_DEFAULT || 12);
+    return isRussianCountry(m.country) ? p >= tRu : p >= tDefault;
+  }
   function cardFields(m) {
     return {
       id: m.id,
@@ -224,8 +241,8 @@ async function createServerApp() {
       return d
         ? d.getTime()
         : m.year
-        ? new Date(`${m.year}-01-01`).getTime()
-        : 0;
+          ? new Date(`${m.year}-01-01`).getTime()
+          : 0;
     };
     return [...list].sort((a, b) => toTime(b) - toTime(a)).slice(0, count);
   }
@@ -287,6 +304,19 @@ async function createServerApp() {
       filtered = filtered.filter((m) =>
         String(m.actors || "").includes(String(actor))
       );
+
+    // Ограничение для вкладки "По рейтингу" на главной: только последние N лет
+    if (opts.home && sort === "rating") {
+      const currentYear = new Date().getFullYear();
+      const span =
+        Math.max(1, parseInt(process.env.HOME_RATING_YEARS, 10) || 3);
+      const minYear = currentYear - span + 1;
+      filtered = filtered.filter((m) => Number(m.year || 0) >= minYear);
+    }
+
+    if (opts.home) {
+      filtered = filtered.filter((m) => passPopularity(m, special));
+    }
 
     filtered.sort((a, b) => {
       switch (sort) {
@@ -357,26 +387,31 @@ async function createServerApp() {
     const all = (data?.movies || []).filter(
       (m) => m.id !== "index" && !isRecentPremiere(m)
     );
+    const allowed = all.filter((m) => passPopularity(m));
+    const allowedDoramas = all.filter((m) => passPopularity(m, "doramas"));
+    const allowedTurkish = all.filter((m) => passPopularity(m, "turkish"));
+
     const thirty = new Date();
     thirty.setDate(thirty.getDate() - 30);
-    const recent = all.filter((m) => {
+    const recent = allowed.filter((m) => {
       const d = parseRussianPremiere(m.premiere);
       return d && d >= thirty;
     });
+
     let popular = recent
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
       .slice(0, 12);
     if (popular.length < 12) {
       const ids = new Set(popular.map((m) => m.id));
-      const add = all
+      const add = allowed
         .filter((m) => !ids.has(m.id))
         .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
         .slice(0, 12 - popular.length);
       popular = popular.concat(add);
     }
-    const cat = (name) => pickLatest(all.filter((m) => m.category === name));
+    const cat = (name) => pickLatest(allowed.filter((m) => m.category === name));
     const doramas = pickLatest(
-      all.filter(
+      allowedDoramas.filter(
         (m) =>
           m.category === "serialy" &&
           isAsianCountry(m.country) &&
@@ -384,7 +419,7 @@ async function createServerApp() {
       )
     );
     const turkish = pickLatest(
-      all.filter((m) => m.category === "serialy" && isTurkish(m.country))
+      allowedTurkish.filter((m) => m.category === "serialy" && isTurkish(m.country))
     );
     return {
       popular: popular.map(categoryCardFields),
@@ -432,9 +467,9 @@ async function createServerApp() {
       .map((m) => ({ movie: m, r: ratingOf(m) }))
       .sort((a, b) => b.r - a.r)
       .map((x) => x.movie);
-      const total = sorted.length;
-      const items = sorted.slice(offset, offset + limit).map(categoryCardFields);
-      return { items, total };
+    const total = sorted.length;
+    const items = sorted.slice(offset, offset + limit).map(categoryCardFields);
+    return { items, total };
   }
 
   let moviesDataCache = null;
@@ -504,7 +539,7 @@ async function createServerApp() {
   async function ensureDataDir() {
     try {
       await fs.mkdir(DATA_DIR, { recursive: true });
-    } catch (_) {}
+    } catch (_) { }
   }
 
   async function readStore(filePath, fallbackValue) {
@@ -698,6 +733,7 @@ async function createServerApp() {
         translation: req.query.translation,
         actor: req.query.actor,
         special: req.query.special,
+        home: String(req.query.home || "") === "1",
       };
 
       const feed = getCategoryFeed(data, opts);
@@ -1214,52 +1250,77 @@ async function createServerApp() {
       return res.json({ ok: false, error: "request-failed" });
     }
   });
-// server.js — рядом с /api/kd-loader.js
-app.get("/api/cdnvh-playerui.js", async (req, res) => {
-  try {
-    const upstream = "https://stage.player.cdnvideohub.com/static/playerui.js";
-    const resp = await axios.get(upstream, {
-      timeout: 10000,
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        Accept: "application/javascript,text/javascript,*/*;q=0.1",
-        Referer: BASE_URL,
-      },
-      responseType: "text",
-      validateStatus: () => true,
-    });
-    if (resp.status >= 400 || !resp.data) {
-      return res.status(502).type("application/javascript").send("// cdnvh proxy: upstream failed");
+  // server.js — рядом с /api/kd-loader.js
+  app.get("/api/cdnvh-playerui.js", async (req, res) => {
+    try {
+      const upstream = "https://stage.player.cdnvideohub.com/static/playerui.js";
+      const resp = await axios.get(upstream, {
+        timeout: 10000,
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "application/javascript,text/javascript,*/*;q=0.1",
+          Referer: BASE_URL,
+        },
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (resp.status >= 400 || !resp.data) {
+        return res.status(502).type("application/javascript").send("// cdnvh proxy: upstream failed");
+      }
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
+      res.send(resp.data);
+    } catch (e) {
+      res.status(502).type("application/javascript").send("// cdnvh proxy: request failed");
     }
-    res.set("Content-Type", "application/javascript; charset=utf-8");
-    res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
-    res.send(resp.data);
-  } catch (e) {
-    res.status(502).type("application/javascript").send("// cdnvh proxy: request failed");
-  }
-});
+  });
 
-// (опционально) Прокси Yandex Metrica tag.js — если решите грузить метрику.
-// ИНИЦИАЛИЗИРУЙТЕ её только после взаимодействия пользователя!
-// app.get("/api/ym-tag.js", async (req, res) => {
-//   try {
-//     const upstream = "https://mc.yandex.ru/metrika/tag.js";
-//     const resp = await axios.get(upstream, {
-//       timeout: 10000,
-//       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/javascript,text/javascript,*/*;q=0.1" },
-//       responseType: "text",
-//       validateStatus: () => true,
-//     });
-//     if (resp.status >= 400 || !resp.data) {
-//       return res.status(502).type("application/javascript").send("// ym proxy: upstream failed");
-//     }
-//     res.set("Content-Type", "application/javascript; charset=utf-8");
-//     res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
-//     res.send(resp.data);
-//   } catch (e) {
-//     res.status(502).type("application/javascript").send("// ym proxy: request failed");
-//   }
-// });
+  app.get("/api/cdnvh-umd.js", async (req, res) => {
+    try {
+      const upstream = "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
+      const resp = await axios.get(upstream, {
+        timeout: 15000,
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "application/javascript,text/javascript,*/*;q=0.1",
+          Referer: BASE_URL,
+        },
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (resp.status >= 400 || !resp.data) {
+        return res.status(502).type("application/javascript").send("// cdnvh umd proxy: upstream failed");
+      }
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      // 30 days. You can use 1y + immutable if you always bump the path when upstream changes.
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
+      res.send(resp.data);
+    } catch (e) {
+      res.status(502).type("application/javascript").send("// cdnvh umd proxy: request failed");
+    }
+  });
+
+  // (опционально) Прокси Yandex Metrica tag.js — если решите грузить метрику.
+  // ИНИЦИАЛИЗИРУЙТЕ её только после взаимодействия пользователя!
+  // app.get("/api/ym-tag.js", async (req, res) => {
+  //   try {
+  //     const upstream = "https://mc.yandex.ru/metrika/tag.js";
+  //     const resp = await axios.get(upstream, {
+  //       timeout: 10000,
+  //       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/javascript,text/javascript,*/*;q=0.1" },
+  //       responseType: "text",
+  //       validateStatus: () => true,
+  //     });
+  //     if (resp.status >= 400 || !resp.data) {
+  //       return res.status(502).type("application/javascript").send("// ym proxy: upstream failed");
+  //     }
+  //     res.set("Content-Type", "application/javascript; charset=utf-8");
+  //     res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
+  //     res.send(resp.data);
+  //   } catch (e) {
+  //     res.status(502).type("application/javascript").send("// ym proxy: request failed");
+  //   }
+  // });
   // Прокси для загрузчика Kodik, чтобы обойти блокировки/AdBlock
   app.get("/api/kd-loader.js", async (req, res) => {
     try {
@@ -1326,15 +1387,15 @@ Sitemap: ${BASE_URL}/sitemap.xml
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
-  .map(
-    (u) => `  <url>
+          .map(
+            (u) => `  <url>
     <loc>${u.loc}</loc>
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>${u.priority}</priority>
   </url>`
-  )
-  .join("\n")}
+          )
+          .join("\n")}
 </urlset>`;
       res.type("application/xml").send(xml);
     } catch (e) {
@@ -1425,9 +1486,8 @@ ${urls
       seo.ogImage = m.image
         ? m.image.startsWith("http")
           ? m.image
-          : `${BASE_URL}/${
-              m.image.startsWith("/") ? m.image.slice(1) : m.image
-            }`
+          : `${BASE_URL}/${m.image.startsWith("/") ? m.image.slice(1) : m.image
+          }`
         : null;
 
       // JSON-LD Movie (упрощенно)
@@ -1441,11 +1501,11 @@ ${urls
         description: desc,
         aggregateRating: rating
           ? {
-              "@type": "AggregateRating",
-              ratingValue: Number(rating),
-              bestRating: 10,
-              ratingCount: 100,
-            }
+            "@type": "AggregateRating",
+            ratingValue: Number(rating),
+            bestRating: 10,
+            ratingCount: 100,
+          }
           : undefined,
       };
       seo.ldJson = JSON.stringify(ld);
@@ -1617,42 +1677,42 @@ ${urls
 
         const urlObj = new URL(BASE_URL + url);
 
-          if (routeInfo.type === "home") {
-            initialState.homeFeed = getHomeFeed(data);
-          } else if (routeInfo.type === "tops") {
-            const t = urlObj.searchParams.get("type") || "all";
-            initialState.topFeed = {
-              type: t,
-              limit: 24,
-              offset: 0,
-              data: getTopFeedPaged(data, { limit: 24, offset: 0, type: t }),
-            };
-          } else if (routeInfo.type === "category") {
-            const params = {
-              name: routeInfo.category,
-              page: urlObj.searchParams.get("page") || 1,
-              limit: urlObj.searchParams.get("limit") || 24,
-              sort: urlObj.searchParams.get("sort") || "year",
-              year: urlObj.searchParams.get("year") || "",
-              genre: urlObj.searchParams.get("genre") || "",
-              country: urlObj.searchParams.get("country") || "",
-              translation: urlObj.searchParams.get("translation") || "",
-              actor: urlObj.searchParams.get("actor") || "",
-              special: urlObj.searchParams.get("special") || "",
-            };
-            initialState.categoryFeed = {
-              slug: routeInfo.category,
-              feed: buildCategoryFeed(data, params),
-              params,
-            };
-          } else if (routeInfo.type === "movie") {
-            const payload = buildMoviePayload(data, routeInfo.id);
-            if (payload) {
-              initialState.moviePayload = payload;
-            } else {
-              res.status(404);
-            }
+        if (routeInfo.type === "home") {
+          initialState.homeFeed = getHomeFeed(data);
+        } else if (routeInfo.type === "tops") {
+          const t = urlObj.searchParams.get("type") || "all";
+          initialState.topFeed = {
+            type: t,
+            limit: 24,
+            offset: 0,
+            data: getTopFeedPaged(data, { limit: 24, offset: 0, type: t }),
+          };
+        } else if (routeInfo.type === "category") {
+          const params = {
+            name: routeInfo.category,
+            page: urlObj.searchParams.get("page") || 1,
+            limit: urlObj.searchParams.get("limit") || 24,
+            sort: urlObj.searchParams.get("sort") || "year",
+            year: urlObj.searchParams.get("year") || "",
+            genre: urlObj.searchParams.get("genre") || "",
+            country: urlObj.searchParams.get("country") || "",
+            translation: urlObj.searchParams.get("translation") || "",
+            actor: urlObj.searchParams.get("actor") || "",
+            special: urlObj.searchParams.get("special") || "",
+          };
+          initialState.categoryFeed = {
+            slug: routeInfo.category,
+            feed: buildCategoryFeed(data, params),
+            params,
+          };
+        } else if (routeInfo.type === "movie") {
+          const payload = buildMoviePayload(data, routeInfo.id);
+          if (payload) {
+            initialState.moviePayload = payload;
+          } else {
+            res.status(404);
           }
+        }
 
         // Готовим HTML приложения
         const { html: appHtml } = await devRender(url, initialState);
@@ -1710,6 +1770,7 @@ ${urls
 
         // SEO-инъекция и 404
         const seo = computeSeo(url, data, BASE_URL);
+        if (process.env.FORCE_NOINDEX === "1") seo.robots = "noindex, nofollow";
         html = injectSeo(html, seo);
         if (seo.status === 404) res.status(404);
       } else {
@@ -1765,43 +1826,43 @@ ${urls
         const preload = renderPreloadLinks(ctx.modules, manifest);
 
         const scripts = [];
-          if (initialState.homeFeed) {
-            scripts.push(
-              `window.__HOME_FEED__=${JSON.stringify(
-                initialState.homeFeed
-              ).replace(/</g, "\\u003c")}`
-            );
-          }
-          if (initialState.topFeed) {
-            const j = {
-              items: initialState.topFeed.data.items,
-              total: initialState.topFeed.data.total,
-              limit: initialState.topFeed.limit,
-              offset: initialState.topFeed.offset,
-              type: initialState.topFeed.type,
-            };
-            scripts.push(
-              `window.__TOP_FEED__=${JSON.stringify(j).replace(
-                /</g,
-                "\\u003c"
-              )}`
-            );
-          }
-          if (initialState.categoryFeed) {
-            const cfg = initialState.categoryFeed;
-            scripts.push(
-              `window.__CATEGORY_FEED__=window.__CATEGORY_FEED__||{};window.__CATEGORY_FEED__[${JSON.stringify(
-                cfg.slug
-              )}]=${JSON.stringify(cfg.feed).replace(/</g, "\\u003c")}`
-            );
-          }
-          if (initialState.moviePayload) {
-            scripts.push(
-              `window.__MOVIE_PAYLOAD__=${JSON.stringify(
-                initialState.moviePayload
-              ).replace(/</g, "\\u003c")}`
-            );
-          }
+        if (initialState.homeFeed) {
+          scripts.push(
+            `window.__HOME_FEED__=${JSON.stringify(
+              initialState.homeFeed
+            ).replace(/</g, "\\u003c")}`
+          );
+        }
+        if (initialState.topFeed) {
+          const j = {
+            items: initialState.topFeed.data.items,
+            total: initialState.topFeed.data.total,
+            limit: initialState.topFeed.limit,
+            offset: initialState.topFeed.offset,
+            type: initialState.topFeed.type,
+          };
+          scripts.push(
+            `window.__TOP_FEED__=${JSON.stringify(j).replace(
+              /</g,
+              "\\u003c"
+            )}`
+          );
+        }
+        if (initialState.categoryFeed) {
+          const cfg = initialState.categoryFeed;
+          scripts.push(
+            `window.__CATEGORY_FEED__=window.__CATEGORY_FEED__||{};window.__CATEGORY_FEED__[${JSON.stringify(
+              cfg.slug
+            )}]=${JSON.stringify(cfg.feed).replace(/</g, "\\u003c")}`
+          );
+        }
+        if (initialState.moviePayload) {
+          scripts.push(
+            `window.__MOVIE_PAYLOAD__=${JSON.stringify(
+              initialState.moviePayload
+            ).replace(/</g, "\\u003c")}`
+          );
+        }
         const stateScript = scripts.length
           ? `<script>${scripts.join(";")}</script>`
           : "";
