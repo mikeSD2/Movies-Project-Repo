@@ -1419,7 +1419,7 @@ ${urls
     const path = u.pathname.replace(/\/+$/, "") || "/";
     const movies = data?.movies || [];
     const categories = data?.categories || {};
-    // ... внутри computeSeo(...)
+
     const seo = {
       title: "LordFilm — фильмы, сериалы и аниме онлайн",
       description:
@@ -1432,10 +1432,8 @@ ${urls
       ogType: "website",
     };
 
-    // Главная
     if (path === "/") return seo;
 
-    // Топ
     if (path === "/tops") {
       seo.title = "Топ всех фильмов и сериалов — LordFilms";
       seo.description =
@@ -1444,8 +1442,10 @@ ${urls
       return seo;
     }
 
-    // Категории
     const knownCats = ["filmy", "serialy", "multfilmy", "anime"];
+    const parts = path.split("/").filter(Boolean);
+
+    // Category root: /filmy, /serialy, /multfilmy, /anime
     if (knownCats.includes(path.slice(1))) {
       const cat = path.slice(1);
       const name =
@@ -1463,8 +1463,7 @@ ${urls
       return seo;
     }
 
-    // Страница фильма: /:category/:id
-    const parts = path.split("/").filter(Boolean);
+    // Movie: /:category/:id
     if (parts.length === 2) {
       const [cat, id] = parts;
       const m = movies.find((x) => x.id === id);
@@ -1486,11 +1485,9 @@ ${urls
       seo.ogImage = m.image
         ? m.image.startsWith("http")
           ? m.image
-          : `${BASE_URL}/${m.image.startsWith("/") ? m.image.slice(1) : m.image
-          }`
+          : `${BASE_URL}/${m.image.startsWith("/") ? m.image.slice(1) : m.image}`
         : null;
 
-      // JSON-LD Movie (упрощенно)
       const rating = m.imdbRating || m.kpRating;
       const ld = {
         "@context": "https://schema.org",
@@ -1501,19 +1498,33 @@ ${urls
         description: desc,
         aggregateRating: rating
           ? {
-            "@type": "AggregateRating",
-            ratingValue: Number(rating),
-            bestRating: 10,
-            ratingCount: 100,
-          }
+              "@type": "AggregateRating",
+              ratingValue: Number(rating),
+              bestRating: 10,
+              ratingCount: 100,
+            }
           : undefined,
       };
       seo.ldJson = JSON.stringify(ld);
       return seo;
     }
 
-    // По умолчанию
+    // Any other URL under a known category (e.g. /serialy/.../page/4) => 404
+    if (parts.length > 0 && knownCats.includes(parts[0])) {
+      seo.title = "Страница не найдена — LordFilms";
+      seo.description = "Страница не найдена.";
+      seo.canonical = `${BASE_URL}${path}`;
+      seo.robots = "noindex,follow";
+      seo.status = 404;
+      return seo;
+    }
+
+    // Any other unknown path => 404
+    seo.title = "Страница не найдена — LordFilms";
+    seo.description = "Страница не найдена.";
     seo.canonical = `${BASE_URL}${path}`;
+    seo.robots = "noindex,follow";
+    seo.status = 404;
     return seo;
   }
 
@@ -1674,7 +1685,6 @@ ${urls
         const ua = String(req.headers["user-agent"] || "");
         const routeInfo = parseRoute(url);
         const initialState = {};
-
         const urlObj = new URL(BASE_URL + url);
 
         if (routeInfo.type === "home") {
@@ -1712,6 +1722,8 @@ ${urls
           } else {
             res.status(404);
           }
+        } else if (routeInfo.type === "unknown") {
+          res.status(404);
         }
 
         // Готовим HTML приложения
@@ -1817,6 +1829,8 @@ ${urls
           } else {
             res.status(404);
           }
+        } else if (routeInfo.type === "unknown") {
+          res.status(404);
         }
 
         const { html: appHtml, ctx } = await render(url, initialState);

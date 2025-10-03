@@ -48,9 +48,9 @@
           <ul class="navbar__nav-hidden-col">
             <li><router-link to="/serialy">Все</router-link></li>
             <li>По году:</li>
-            <li><a href="#" @click.prevent="navigate('/serialy?year=2023')">2023</a></li>
-            <li><a href="#" @click.prevent="navigate('/serialy?year=2024')">2024</a></li>
             <li><a href="#" @click.prevent="navigate('/serialy?year=2025')">2025</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?year=2024')">2024</a></li>
+            <li><a href="#" @click.prevent="navigate('/serialy?year=2023')">2023</a></li>
           </ul>
           <ul class="navbar__nav-hidden-col">
             <li>По жанрам:</li>

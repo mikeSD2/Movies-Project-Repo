@@ -56,7 +56,7 @@
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Биография')">Биографические</a></li>
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Боевик')">Боевики</a></li>
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Вестерн')">Вестерны</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Военные')">Военные</a></li>
+              <li><a href="#" @click.prevent="navigate('/filmy?genre=Военный')">Военные</a></li>
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Документальный')">Документальные</a></li>
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Детектив')">Детективы</a></li>
               <li><a href="#" @click.prevent="navigate('/filmy?genre=Семейный')">Детские</a></li>
