@@ -244,6 +244,56 @@ def _tokenize(s: str) -> list[str]:
     # допускаем короткие названия типа F1
     return [t for t in re.findall(r'[a-zа-яё0-9]+', _norm(s), flags=re.I) if len(t) >= 1]
 
+# Номера частей в римских цифрах
+ROMANS = {2: 'ii', 3: 'iii', 4: 'iv', 5: 'v', 6: 'vi', 7: 'vii', 8: 'viii', 9: 'ix', 10: 'x'}
+
+def _detect_part_num(title: str | None) -> int | None:
+    """Извлекает номер части (2..20) из названия: римскими или цифрой. Годы (4 цифры) игнорируются."""
+    if not title:
+        return None
+    s = _norm(title)
+    for n, r in sorted(ROMANS.items(), key=lambda kv: -len(kv[1])):  # римские длинные сначала
+        if re.search(rf'\b{r}\b', s):
+            return n
+    for m in re.findall(r'\b(\d{1,2})\b', s):  # арабские (исключаем годы)
+        n = int(m)
+        if 2 <= n <= 20:
+            return n
+    return None
+
+def _has_part_marker_in_title(title_text: str, part_num: int) -> bool:
+    """Проверяет наличие номера части (цифра/римская) в заголовке результата."""
+    if not part_num:
+        return True
+    t = _norm(title_text or '')
+    if re.search(rf'\b{part_num}\b', t):
+        return True
+    rn = ROMANS.get(part_num)
+    if rn and re.search(rf'\b{rn}\b', t):
+        return True
+    return False
+
+def _title_starts_early(snippet: str, exp_title: str, exp_orig: str | None, max_words: int = 4) -> bool:
+    """True, если одно из названий встречается очень рано в сниппете (<= max_words слов префикса)."""
+    text = _norm(snippet or '')
+    if not text:
+        return False
+    candidates = []
+    if exp_title: candidates.append(_norm(exp_title))
+    if exp_orig:  candidates.append(_norm(exp_orig))
+    for cand in candidates:
+        if not cand: 
+            continue
+        pos = text.find(cand)
+        if pos == -1:
+            continue
+        prefix = text[:pos].strip()
+        if not prefix:
+            return True
+        if len(re.findall(r'[a-zа-яё0-9]+', prefix)) <= max_words:
+            return True
+    return False
+
 def is_informative_name(name: str | None) -> bool:
     if not name: return False
     n = name.strip()
@@ -308,8 +358,10 @@ async def _get_kinopoisk_id_from_search(query: str, expected_title: str, expecte
                 print(f"          -> Skip: Expected {'series' if is_series else 'film'}, got {url_type}.")
                 continue
 
-            # --- НОВАЯ СВЕРХ-СТРОГАЯ ЛОГИКА ---
-            # ШАГ 1: ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА РЕЛЕВАНТНОСТИ ЗАГОЛОВКА (`title_field`)
+            # --- УЧЁТ НОМЕРА ЧАСТИ ФРАНШИЗЫ ---
+            expected_part = _detect_part_num(expected_title) or _detect_part_num(expected_original_title)
+
+            # ШАГ 1: обязательная релевантность заголовка
             title_score_ru = _tokens_score(expected_title, title_field)
             title_score_orig = _tokens_score(expected_original_title, title_field) if exp_orig_title_norm else 0.0
             is_title_relevant = (title_score_ru >= 0.4) or (title_score_orig >= 0.4)
@@ -318,7 +370,16 @@ async def _get_kinopoisk_id_from_search(query: str, expected_title: str, expecte
                 print(f"          -> Skip: Title field '{title_field}' is not relevant enough (scores ru:{title_score_ru:.2f}, orig:{title_score_orig:.2f}).")
                 continue
 
-            # ШАГ 2: ПОИСК ПОДТВЕРЖДЕННОГО СОВПАДЕНИЯ (название + год)
+            # Если есть номер части — требуем его в заголовке; иначе допускаем фолбэк через «ранний» сниппет
+            if expected_part and not _has_part_marker_in_title(title_field, expected_part):
+                early_title_ok = _title_starts_early(snippet, expected_title, expected_original_title, max_words=4)
+                early_segment = snippet[:120]
+                early_part_ok = _has_part_marker_in_title(early_segment, expected_part)
+                if not (early_title_ok and early_part_ok):
+                    print("          -> Skip: Part marker not in title, and snippet start not confidently matching the same part.")
+                    continue
+
+            # ШАГ 2: подтверждение годом
             if year_str and (year_str in title_norm):
                 print(f"          -> Checks: title_ok=True (relevant), year_ok=True (in title field)")
                 print(f"          -> ACCEPT. ID: {kp_id}")
@@ -335,7 +396,8 @@ async def _get_kinopoisk_id_from_search(query: str, expected_title: str, expecte
                 search_title = exp_title_norm if body_has_title_ru else exp_orig_title_norm
                 try:
                     if search_title: title_pos = body_norm.index(search_title)
-                except (ValueError, TypeError): pass
+                except (ValueError, TypeError): 
+                    pass
 
                 if title_pos != -1:
                     search_context = body_norm[title_pos:]
