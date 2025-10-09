@@ -129,7 +129,7 @@ const hasMoreItems = computed(() => shownCount.value < total.value);
 const itemsPerPage = 24;
 
 const selectedYear = ref(route.query.year || "");
-const selectedGenre = ref(route.query.genre || "");
+const selectedGenre = ref(route.query.genre ? normalizeGenreLabel(route.query.genre) : "");
 const selectedCountry = ref(
   route.query.country ? decodeURIComponent(route.query.country) : ""
 );
@@ -171,6 +171,67 @@ const visiblePages = computed(() => {
 
   return pages;
 });
+
+function normalizeGenreLabel(s) {
+  const key = String(s || '').trim().toLowerCase()
+  const MAP = {
+'триллер': 'Триллер',
+    'триллеры': 'Триллер',
+
+    'ужасы': 'Ужасы',
+    'ужас': 'Ужасы',
+    'хоррор': 'Ужасы',
+    'horror': 'Ужасы',
+
+    'комедия': 'Комедия',
+    'комедии': 'Комедия',
+
+    'драма': 'Драма',
+    'драмы': 'Драма',
+
+    'детектив': 'Детектив',
+    'детективы': 'Детектив',
+
+    'детский': 'Детский',
+    'детские': 'Детский',
+
+    'фантастика': 'Фантастика',
+    'sci-fi': 'Фантастика',
+    'научная фантастика': 'Фантастика',
+
+    'фэнтези': 'Фэнтези',
+    'фентези': 'Фэнтези',
+
+    'боевик': 'Боевик',
+    'боевики': 'Боевик',
+
+    'приключения': 'Приключения',
+    'приключение': 'Приключения',
+
+    'мелодрама': 'Мелодрама',
+    'мелодрамы': 'Мелодрама',
+
+    'криминал': 'Криминал',
+
+    'история': 'История',
+    'исторический': 'История',
+    'исторические': 'История',
+
+    'семейный': 'Семейный',
+    'семейные': 'Семейный',
+
+    'спорт': 'Спорт',
+    'музыка': 'Музыка',
+    'аниме': 'Аниме',
+    'мультфильмы': 'Мультфильмы',
+    'мультфильм': 'Мультфильмы',
+    'дорама': 'Дорамы',
+    'дорамы': 'Дорамы',
+    'турецкие сериалы': 'Турецкие сериалы',
+  }
+  if (MAP[key]) return MAP[key]
+  return key ? key[0].toUpperCase() + key.slice(1) : ''
+}
 
 function buildParams(page) {
   const params = new URLSearchParams({
@@ -283,7 +344,7 @@ function loadMore() {
 }
 function handleUrlParams() {
   selectedYear.value = route.query.year || "";
-  selectedGenre.value = route.query.genre || "";
+  selectedGenre.value = route.query.genre ? normalizeGenreLabel(route.query.genre) : "";
   selectedCountry.value = route.query.country
     ? decodeURIComponent(route.query.country)
     : "";
@@ -314,7 +375,7 @@ watch(() => props.category, (newCategory, oldCategory) => {
 
     // Очистка фильтров до default значений
     selectedYear.value = route.query.year || ''
-    selectedGenre.value = route.query.genre || ''
+    selectedGenre.value = route.query.genre ? normalizeGenreLabel(route.query.genre) : ''
     selectedCountry.value = route.query.country ? decodeURIComponent(route.query.country) : ''
     selectedTranslation.value = route.query.translation ? decodeURIComponent(route.query.translation) : ''
     selectedActor.value = route.query.actor ? decodeURIComponent(route.query.actor) : ''

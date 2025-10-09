@@ -45,8 +45,8 @@ def append_to_ndjson(filename, item_data):
 # Ключи API
 TMDB_API_KEY = '636c87f3e6bbd33eae8ee8265c83082e'
 GEMINI_API_KEYS = [
-    "AIzaSyDSvSIUZooqz746y6CVA7IoGjFrDWyj5L4", # Основной ключ
-    "AIzaSyCI0qt3OOliBaM_QOztawFqmBMo5AGw_kY"  # Резервный ключ
+    "AIzaSyCrgDaMYgIZG-SKxJTJ1ShoE1YaG3mwMSw",  # Резервный ключ
+    "AIzaSyDSvSIUZooqz746y6CVA7IoGjFrDWyj5L4" # Основной ключ
 ]
 current_gemini_key_index = 0
 

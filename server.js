@@ -70,7 +70,8 @@ async function createServerApp() {
           links += `<link rel="modulepreload" crossorigin href="/${file}">`;
         } else if (file.endsWith(".css")) {
           // non-blocking CSS
-          links += `<link rel="preload" as="style" href="/${file}" onload="this.onload=null;this.rel='stylesheet'">` +
+          links +=
+            `<link rel="preload" as="style" href="/${file}" onload="this.onload=null;this.rel='stylesheet'">` +
             `<noscript><link rel="stylesheet" href="/${file}"></noscript>`;
         } else if (file.endsWith(".woff2") || file.endsWith(".woff")) {
           const type = file.endsWith(".woff2") ? "font/woff2" : "font/woff";
@@ -80,10 +81,101 @@ async function createServerApp() {
     });
     return links;
   }
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
+  
+  // Нормализация жанров: сводим регистр/число/варианты к каноническому виду
+function normalizeGenreLabel(s) {
+  const key = String(s || '').trim().toLowerCase();
+
+  const MAP = {
+    'триллер': 'Триллер',
+    'триллеры': 'Триллер',
+
+    'ужасы': 'Ужасы',
+    'ужас': 'Ужасы',
+    'хоррор': 'Ужасы',
+    'horror': 'Ужасы',
+
+    'комедия': 'Комедия',
+    'комедии': 'Комедия',
+
+    'драма': 'Драма',
+    'драмы': 'Драма',
+
+    'детектив': 'Детектив',
+    'детективы': 'Детектив',
+
+    'детский': 'Детский',
+    'детские': 'Детский',
+
+    'фантастика': 'Фантастика',
+    'sci-fi': 'Фантастика',
+    'научная фантастика': 'Фантастика',
+
+    'фэнтези': 'Фэнтези',
+    'фентези': 'Фэнтези',
+
+    'боевик': 'Боевик',
+    'боевики': 'Боевик',
+
+    'приключения': 'Приключения',
+    'приключение': 'Приключения',
+
+    'мелодрама': 'Мелодрама',
+    'мелодрамы': 'Мелодрама',
+
+    'криминал': 'Криминал',
+
+    'история': 'История',
+    'исторический': 'История',
+    'исторические': 'История',
+
+    'семейный': 'Семейный',
+    'семейные': 'Семейный',
+
+    'спорт': 'Спорт',
+    'музыка': 'Музыка',
+    'аниме': 'Аниме',
+    'мультфильмы': 'Мультфильмы',
+    'мультфильм': 'Мультфильмы',
+    'дорама': 'Дорамы',
+    'дорамы': 'Дорамы',
+    'турецкие сериалы': 'Турецкие сериалы',
+  };
+
+  if (MAP[key]) return MAP[key];
+
+  // Фолбэк: просто делаем "Первая буква заглавная", остальное нижний регистр
+  return key ? key[0].toUpperCase() + key.slice(1) : '';
+}
+
+function normalizeMovieGenres(list) {
+  const arr = Array.isArray(list) ? list : [];
+  const out = [];
+  const seen = new Set();
+  for (const g of arr) {
+    const canon = normalizeGenreLabel(g);
+    if (canon && !seen.has(canon)) {
+      seen.add(canon);
+      out.push(canon);
+    }
+  }
+  return out;
+}
+
+function hasGenreIntersection(a, b) {
+  const A = new Set(normalizeMovieGenres(a));
+  for (const g of normalizeMovieGenres(b)) {
+    if (A.has(g)) return true;
+  }
+  return false;
+}
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+if (isProduction) {
   app.use(compression());
+}
 
   // Статические файлы для production (если не в development режиме)
   if (isProduction) {
@@ -105,7 +197,7 @@ async function createServerApp() {
   }
 
   // Путь к файлу с данными
-  const DATA_FILE = path.join(__dirname, "movies-data.json");
+  const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "movies-data.json"); 
   // Серверные (только backend) хранилища, чтобы не триггерить HMR фронтенда
   const DATA_DIR = path.join(__dirname, "server-data");
   const COMMENTS_FILE = path.join(DATA_DIR, "comments-store.json");
@@ -150,7 +242,9 @@ async function createServerApp() {
     const d = parseRussianPremiere(movie?.premiere);
     return !!(d && isTodayOrYesterday(d));
   }
-
+  function isHidden(movie) {
+    return !!(movie && movie.hidden);
+  }
   // helpers for feeds
   function ratingOf(m) {
     const i = parseFloat(String(m.imdbRating || "").replace(",", ".")) || 0;
@@ -186,11 +280,15 @@ async function createServerApp() {
   function passPopularity(m, special) {
     const p = Number(m.popularity || 0);
     if (String(special) === "doramas") {
-      const t = Number(process.env.HOME_POP_DORAMAS || process.env.HOME_POP_DEFAULT || 5);
+      const t = Number(
+        process.env.HOME_POP_DORAMAS || process.env.HOME_POP_DEFAULT || 5
+      );
       return p >= t;
     }
     if (String(special) === "turkish") {
-      const t = Number(process.env.HOME_POP_TURKISH || process.env.HOME_POP_DEFAULT || 5);
+      const t = Number(
+        process.env.HOME_POP_TURKISH || process.env.HOME_POP_DEFAULT || 5
+      );
       return p >= t;
     }
     const tRu = Number(process.env.HOME_POP_RU || 4);
@@ -241,8 +339,8 @@ async function createServerApp() {
       return d
         ? d.getTime()
         : m.year
-          ? new Date(`${m.year}-01-01`).getTime()
-          : 0;
+        ? new Date(`${m.year}-01-01`).getTime()
+        : 0;
     };
     return [...list].sort((a, b) => toTime(b) - toTime(a)).slice(0, count);
   }
@@ -261,15 +359,20 @@ async function createServerApp() {
     } = opts;
 
     const movies = (data?.movies || []).filter(
-      (m) => m.category === name && m.id !== "index" && !isRecentPremiere(m)
+      (m) =>
+        m.category === name &&
+        m.id !== "index" &&
+        !isRecentPremiere(m) &&
+        !isHidden(m)
     );
 
     const availableYears = [
       ...new Set(movies.map((m) => m.year).filter(Boolean)),
     ].sort((a, b) => b - a);
+    
     const availableGenres = Array.from(
       movies.reduce((acc, m) => {
-        (m.genres || []).forEach((g) => acc.add(g));
+        normalizeMovieGenres(m.genres).forEach((g) => acc.add(g));
         return acc;
       }, new Set())
     ).sort();
@@ -286,10 +389,10 @@ async function createServerApp() {
 
     if (year)
       filtered = filtered.filter((m) => String(m.year) === String(year));
-    if (genre)
-      filtered = filtered.filter((m) =>
-        (m.genres || []).includes(String(genre))
-      );
+    if (genre) {
+      const needle = normalizeGenreLabel(String(genre));
+      filtered = filtered.filter((m) => normalizeMovieGenres(m.genres).includes(needle));
+    }
     if (country)
       filtered = filtered.filter((m) =>
         String(m.country || "")
@@ -297,9 +400,13 @@ async function createServerApp() {
           .includes(String(country).toLowerCase())
       );
     if (translation)
-      filtered = filtered.filter((m) =>
-        (m.translation || "").includes(String(translation))
-      );
+      filtered = filtered.filter((m) => {
+        const t = m.translation;
+        const needle = String(translation).toLowerCase();
+        if (!t) return false;
+        if (Array.isArray(t)) return t.some((x) => String(x).toLowerCase().includes(needle));
+        return String(t).toLowerCase().includes(needle);
+      });
     if (actor)
       filtered = filtered.filter((m) =>
         String(m.actors || "").includes(String(actor))
@@ -308,8 +415,21 @@ async function createServerApp() {
     // Ограничение для вкладки "По рейтингу" на главной: только последние N лет
     if (opts.home && sort === "rating") {
       const currentYear = new Date().getFullYear();
-      const span =
-        Math.max(1, parseInt(process.env.HOME_RATING_YEARS, 10) || 3);
+      const span = Math.max(
+        1,
+        parseInt(process.env.HOME_RATING_YEARS, 10) || 3
+      );
+      const minYear = currentYear - span + 1;
+      filtered = filtered.filter((m) => Number(m.year || 0) >= minYear);
+    }
+
+    // Ограничение для вкладки "Популярные" на главной: только последние N лет
+    if (opts.home && sort === "popularity") {
+      const currentYear = new Date().getFullYear();
+      const span = Math.max(
+        1,
+        parseInt(process.env.HOME_POP_YEARS, 10) || 2 // по умолчанию последние 2 года
+      );
       const minYear = currentYear - span + 1;
       filtered = filtered.filter((m) => Number(m.year || 0) >= minYear);
     }
@@ -365,7 +485,7 @@ async function createServerApp() {
 
   function buildMoviePayload(data, id) {
     const movie = (data?.movies || []).find((m) => m.id === id);
-    if (!movie) return null;
+    if (!movie || isHidden(movie)) return null;
 
     const categories = data?.categories || {};
     const related = (data?.movies || [])
@@ -373,9 +493,8 @@ async function createServerApp() {
         (m) =>
           m.id !== movie.id &&
           m.category === movie.category &&
-          Array.isArray(m.genres) &&
-          Array.isArray(movie.genres) &&
-          m.genres.some((g) => movie.genres.includes(g))
+          hasGenreIntersection(m.genres, movie.genres) &&
+          !isHidden(m)
       )
       .slice(0, 6)
       .map(categoryCardFields);
@@ -385,7 +504,7 @@ async function createServerApp() {
 
   function buildHomeFeed(data) {
     const all = (data?.movies || []).filter(
-      (m) => m.id !== "index" && !isRecentPremiere(m)
+      (m) => m.id !== "index" && !isRecentPremiere(m) && !isHidden(m)
     );
     const allowed = all.filter((m) => passPopularity(m));
     const allowedDoramas = all.filter((m) => passPopularity(m, "doramas"));
@@ -409,7 +528,8 @@ async function createServerApp() {
         .slice(0, 12 - popular.length);
       popular = popular.concat(add);
     }
-    const cat = (name) => pickLatest(allowed.filter((m) => m.category === name));
+    const cat = (name) =>
+      pickLatest(allowed.filter((m) => m.category === name));
     const doramas = pickLatest(
       allowedDoramas.filter(
         (m) =>
@@ -419,7 +539,9 @@ async function createServerApp() {
       )
     );
     const turkish = pickLatest(
-      allowedTurkish.filter((m) => m.category === "serialy" && isTurkish(m.country))
+      allowedTurkish.filter(
+        (m) => m.category === "serialy" && isTurkish(m.country)
+      )
     );
     return {
       popular: popular.map(categoryCardFields),
@@ -438,7 +560,7 @@ async function createServerApp() {
     { limit = 24, offset = 0, type = "all" } = {}
   ) {
     let list = (data?.movies || []).filter(
-      (m) => m.id !== "index" && ratingOf(m) > 0 && !isRecentPremiere(m)
+      (m) => m.id !== "index" && ratingOf(m) > 0 && !isRecentPremiere(m) && !isHidden(m)
     );
     switch (type) {
       case "filmy":
@@ -478,6 +600,65 @@ async function createServerApp() {
   const topFeedCache = new Map(); // ← добавь эту строку
   let lastModifiedTime = null;
 
+  // === SSR micro-cache (1–3s) for non-bots ===
+  const SSR_TTL_MS = 2000;
+  const ssrCache = new Map();
+
+  function ssrKey(url) {
+    return `${url}#${lastModifiedTime || 0}`;
+  }
+  
+  // вместо хранения только html:
+  function setSsrToCache(url, html, status = 200) {
+    const k = ssrKey(url);
+    ssrCache.set(k, { ts: Date.now(), html, status });
+  }
+
+  function getSsrFromCache(url) {
+    const k = ssrKey(url);
+    const rec = ssrCache.get(k);
+    if (rec && (Date.now() - rec.ts) < SSR_TTL_MS) return rec;
+    if (rec) ssrCache.delete(k);
+    return null;
+  }
+
+  // === Cache caps and helpers (insert after L591) ===
+  const MAX_CATEGORY_CACHE = 200;
+  const MAX_TOP_CACHE = 100;
+
+  const MAX_SEARCH_CACHE = 500;
+  const SEARCH_TTL_MS = 60_000;
+  const searchCache = new Map();
+
+  function setWithCap(map, key, value, cap) {
+    if (map.size >= cap && !map.has(key)) {
+      const firstKey = map.keys().next().value;
+      map.delete(firstKey);
+    }
+    map.set(key, value);
+  }
+
+  function setDataCacheHeaders(res, ttl = 60) {
+    if (lastModifiedTime) {
+      res.set("Last-Modified", new Date(lastModifiedTime).toUTCString());
+    }
+    res.set("Cache-Control", `public, max-age=${ttl}`);
+  }
+
+  function tryConditional304(req, res) {
+    if (!lastModifiedTime) return false;
+    const since = req.headers["if-modified-since"];
+    if (!since) return false;
+    const sinceMs = Date.parse(since);
+    if (!isNaN(sinceMs) && sinceMs >= lastModifiedTime) {
+      res.status(304).end();
+      return true;
+    }
+    return false;
+  }
+
+  let sharpConfigured = false;
+
   function getHomeFeed(data) {
     if (homeFeedCache.data && homeFeedCache.mtime === lastModifiedTime) {
       return homeFeedCache.data;
@@ -492,7 +673,7 @@ async function createServerApp() {
     const cached = categoryFeedCache.get(key);
     if (cached && cached.mtime === lastModifiedTime) return cached.data;
     const feed = buildCategoryFeed(data, opts);
-    categoryFeedCache.set(key, { mtime: lastModifiedTime, data: feed });
+    setWithCap(categoryFeedCache, key, { mtime: lastModifiedTime, data: feed }, MAX_CATEGORY_CACHE);
     return feed;
   }
 
@@ -503,43 +684,61 @@ async function createServerApp() {
       return cached.data;
     }
     const feed = buildTopFeedPaged(data, options);
-    topFeedCache.set(key, { mtime: lastModifiedTime, data: feed });
+    setWithCap(topFeedCache, key, { mtime: lastModifiedTime, data: feed }, MAX_TOP_CACHE);
     return feed;
   }
 
-  // Функция для чтения данных
-  async function readData() {
-    try {
-      const stats = await fs.stat(DATA_FILE);
-      // Если файл не менялся с последнего чтения, возвращаем кэш
-      if (
-        moviesDataCache &&
-        lastModifiedTime &&
-        stats.mtimeMs === lastModifiedTime
-      ) {
-        return moviesDataCache;
-      }
+// put this near other cache vars
+let dataLoadPromise = null;
 
-      // Иначе читаем файл заново
-      console.log("File has changed, updating movie data cache...");
-      const data = await fs.readFile(DATA_FILE, "utf8");
-      moviesDataCache = JSON.parse(data);
-      lastModifiedTime = stats.mtimeMs; // Сохраняем время последней модификации
+async function readData() {
+  try {
+    const stats = await fs.stat(DATA_FILE);
+
+    // Cache hit
+    if (moviesDataCache && lastModifiedTime === stats.mtimeMs) {
       return moviesDataCache;
-    } catch (error) {
-      console.error("Ошибка чтения файла:", error);
-      // При ошибке сбрасываем кэш
-      moviesDataCache = null;
-      lastModifiedTime = null;
-      return null;
     }
+
+    // If a load is already in flight, wait for it
+    if (dataLoadPromise) {
+      return await dataLoadPromise;
+    }
+
+    // Start a single load for all concurrent callers
+    dataLoadPromise = (async () => {
+      console.log(
+        moviesDataCache
+          ? "movies-data.json changed, reloading cache..."
+          : "Loading movies-data.json into cache..."
+      );
+      const raw = await fs.readFile(DATA_FILE, "utf8");
+      const parsed = JSON.parse(raw);
+      moviesDataCache = parsed;
+      lastModifiedTime = stats.mtimeMs;
+      dataLoadPromise = null;
+      return moviesDataCache;
+    })();
+
+    return await dataLoadPromise;
+  } catch (error) {
+    dataLoadPromise = null;
+    if (error?.code === "ENOENT") {
+      console.warn("movies-data.json not found at:", DATA_FILE);
+    } else {
+      console.error("Ошибка чтения файла:", error);
+    }
+    moviesDataCache = null;
+    lastModifiedTime = null;
+    return null;
   }
+}
 
   // Хелперы для серверных стораджей
   async function ensureDataDir() {
     try {
       await fs.mkdir(DATA_DIR, { recursive: true });
-    } catch (_) { }
+    } catch (_) {}
   }
 
   async function readStore(filePath, fallbackValue) {
@@ -564,6 +763,23 @@ async function createServerApp() {
 
   async function setCommentsStore(store) {
     await writeStore(COMMENTS_FILE, store);
+  }
+
+  function transformStylesheetsToPreload(html) {
+    let keptOnce = false;
+    return html.replace(
+      /<link\s+rel=["']stylesheet["'][^>]*href=["'](\/assets\/[^"']+\.css)["'][^>]*>\s*/gi,
+      (m, href) => {
+        if (!keptOnce) { keptOnce = true; return m; }
+        const hasCross = /crossorigin/i.test(m) ? " crossorigin" : "";
+        const mediaMatch = m.match(/\smedia=["']([^"']+)["']/i);
+        const mediaAttr = mediaMatch ? ` media="${mediaMatch[1]}"` : "";
+        return (
+          `<link rel="preload" as="style" href="${href}"${hasCross}${mediaAttr} onload="this.onload=null;this.rel='stylesheet'">` +
+          `<noscript><link rel="stylesheet" href="${href}"${hasCross}${mediaAttr}></noscript>`
+        );
+      }
+    );
   }
 
   async function getCommentsForMovie(movieId) {
@@ -633,10 +849,33 @@ async function createServerApp() {
     }
   }
 
+  function stripBlockingCssLinks(html) {
+    // Удаляем любые rel="stylesheet" на /assets/*.css
+    return html.replace(
+      /<link\s+rel=["']stylesheet["'][^>]*href=["']\/assets\/[^"']+\.css["'][^>]*>\s*/gi,
+      ""
+    );
+  }
+
+  function injectPreloadLinks(html, preload) {
+    if (!preload) return html;
+    if (html.includes("<!--preload-links-->")) {
+      return html.replace("<!--preload-links-->", preload);
+    }
+    // Если плейсхолдера нет, вставляем перед </head>
+    return html.replace("</head>", `${preload}\n</head>`);
+  }
+
   app.get("/api/movies-data", async (req, res) => {
     try {
+      if (tryConditional304(req, res)) return;
       const data = await readData();
-      res.json(data || { movies: [], categories: {} });
+      const includeHidden = String(req.query.includeHidden || "") === "1";
+      const movies = includeHidden
+        ? (data.movies || [])
+        : (data.movies || []).filter((m) => !m.hidden);
+      setDataCacheHeaders(res, 60);
+      res.json({ ...data, movies });
     } catch (e) {
       res.status(500).json({ movies: [], categories: {} });
     }
@@ -646,19 +885,28 @@ async function createServerApp() {
     try {
       const q = String(req.query.q || "").toLowerCase();
       if (!q) return res.json([]);
+      if (tryConditional304(req, res)) return;
+      setDataCacheHeaders(res, 30);
+  
+      const cached = searchCache.get(q);
+      if (cached && (Date.now() - cached.ts) < SEARCH_TTL_MS && cached.mtime === lastModifiedTime) {
+        return res.json(cached.data);
+      }
+  
       const data = await readData();
-
+  
       const norm = (v) => String(v ?? "").toLowerCase();
       const normActors = (v) =>
         Array.isArray(v)
           ? v.join(", ").toLowerCase()
           : String(v ?? "").toLowerCase();
-
+  
       const found = (data.movies || [])
         .filter(
           (m) =>
             m.id !== "index" &&
             !isRecentPremiere(m) &&
+            !isHidden(m) &&
             (norm(m.title).includes(q) ||
               norm(m.originalTitle).includes(q) ||
               norm(m.description).includes(q) ||
@@ -674,6 +922,8 @@ async function createServerApp() {
           kpRating: m.kpRating,
           imdbRating: m.imdbRating,
         }));
+  
+      setWithCap(searchCache, q, { ts: Date.now(), data: found, mtime: lastModifiedTime }, MAX_SEARCH_CACHE);
       res.json(found);
     } catch (e) {
       res.status(500).json([]);
@@ -682,16 +932,20 @@ async function createServerApp() {
 
   // GET /api/movie/:id — один фильм
   app.get("/api/movie/:id", async (req, res) => {
+    if (tryConditional304(req, res)) return;
     const data = await readData();
     const m = (data?.movies || []).find((x) => x.id === req.params.id);
-    if (!m) return res.status(404).json({ error: "not_found" });
+    if (!m || isHidden(m)) return res.status(404).json({ error: "not_found" });
+    setDataCacheHeaders(res, 60);
     res.json({ movie: m, categories: data?.categories || {} });
   });
 
   // Home feed for landing page
   app.get("/api/home-feed", async (req, res) => {
     try {
+      if (tryConditional304(req, res)) return;
       const data = await readData();
+      setDataCacheHeaders(res, 60);
       res.json(getHomeFeed(data));
     } catch {
       res.status(500).json({ popular: [], sections: {} });
@@ -700,9 +954,11 @@ async function createServerApp() {
 
   app.get("/api/movie-full/:id", async (req, res) => {
     try {
+      if (tryConditional304(req, res)) return;
       const data = await readData();
       const payload = buildMoviePayload(data, String(req.params.id));
       if (!payload) return res.status(404).json({ error: "not_found" });
+      setDataCacheHeaders(res, 60);
       res.json(payload);
     } catch {
       res.status(500).json({ error: "server_error" });
@@ -712,16 +968,17 @@ async function createServerApp() {
   app.get("/api/category", async (req, res) => {
     try {
       const data = await readData();
+      if (tryConditional304(req, res)) return;
       const name = String(req.query.name || "").trim();
       if (!name) return res.status(400).json({ error: "missing name" });
-
+  
       const limit = Math.max(
         1,
         Math.min(200, parseInt(req.query.limit, 10) || 24)
       );
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const sort = String(req.query.sort || "year");
-
+  
       const opts = {
         name,
         page,
@@ -735,8 +992,9 @@ async function createServerApp() {
         special: req.query.special,
         home: String(req.query.home || "") === "1",
       };
-
+  
       const feed = getCategoryFeed(data, opts);
+      setDataCacheHeaders(res, 60);
       res.json(feed);
     } catch (e) {
       res.status(500).json({ items: [], total: 0, totalPages: 1 });
@@ -747,6 +1005,7 @@ async function createServerApp() {
   app.get("/api/top", async (req, res) => {
     try {
       const data = await readData();
+      if (tryConditional304(req, res)) return;
       const limit = Math.max(
         1,
         Math.min(200, parseInt(req.query.limit, 10) || 24)
@@ -754,6 +1013,7 @@ async function createServerApp() {
       const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
       const type = String(req.query.type || "all");
       const result = getTopFeedPaged(data, { limit, offset, type });
+      setDataCacheHeaders(res, 60);
       res.json(result);
     } catch {
       res.status(500).json({ items: [], total: 0 });
@@ -763,20 +1023,23 @@ async function createServerApp() {
   // Related movies for a given id (lightweight for hard-reload cases)
   app.get("/api/related/:id", async (req, res) => {
     try {
+      if (tryConditional304(req, res)) return;
       const data = await readData();
       const id = String(req.params.id);
       const list = data?.movies || [];
       const cur = list.find((m) => m.id === id);
-      if (!cur) return res.json({ items: [] });
-
+      if (!cur || isHidden(cur)) {
+        setDataCacheHeaders(res, 60);
+        return res.json({ items: [] });
+      }
+  
       const items = list
         .filter(
           (m) =>
             m.id !== id &&
             m.category === cur.category &&
-            Array.isArray(m.genres) &&
-            Array.isArray(cur.genres) &&
-            m.genres.some((g) => cur.genres.includes(g))
+            hasGenreIntersection(m.genres, cur.genres) &&
+            !isHidden(m)
         )
         .slice(0, 6)
         .map((m) => ({
@@ -789,9 +1052,11 @@ async function createServerApp() {
           imdbRating: m.imdbRating,
           genres: m.genres,
         }));
-
+  
+      setDataCacheHeaders(res, 60);
       res.json({ items });
     } catch {
+      setDataCacheHeaders(res, 60);
       res.status(500).json({ items: [] });
     }
   });
@@ -810,12 +1075,14 @@ async function createServerApp() {
       sort,
     } = req.query;
     const data = await readData();
-    let list = (data?.movies || []).filter((m) => m.id !== "index");
+    let list = (data?.movies || []).filter((m) => m.id !== "index" && !isHidden(m));
 
     if (category) list = list.filter((m) => m.category === String(category));
     if (year) list = list.filter((m) => String(m.year) === String(year));
-    if (genre)
-      list = list.filter((m) => (m.genres || []).includes(String(genre)));
+    if (genre) {
+      const needle = normalizeGenreLabel(String(genre));
+      list = list.filter((m) => normalizeMovieGenres(m.genres).includes(needle));
+    }
     if (country)
       list = list.filter((m) =>
         (m.country || "").toLowerCase().includes(String(country).toLowerCase())
@@ -873,7 +1140,7 @@ async function createServerApp() {
       season: m.season,
       episode: m.episode,
     }));
-
+    setDataCacheHeaders(res, 60);
     res.json({
       items,
       page: p,
@@ -889,18 +1156,26 @@ async function createServerApp() {
       if (!q || q.length < 1) {
         return res.json([]);
       }
-
+      if (tryConditional304(req, res)) return;
+      setDataCacheHeaders(res, 30);
+  
+      const key = `sugg:${String(q).toLowerCase()}`;
+      const cached = searchCache.get(key);
+      if (cached && (Date.now() - cached.ts) < SEARCH_TTL_MS && cached.mtime === lastModifiedTime) {
+        return res.json(cached.data);
+      }
+  
       const data = await readData();
       if (!data || !data.movies) {
         return res.status(500).json({ error: "Could not load movie data." });
       }
-
-      // /api/search-suggestions
+  
       const suggestions = data.movies
         .filter(
           (movie) =>
             movie.id !== "index" &&
             !isRecentPremiere(movie) &&
+            !isHidden(movie) &&
             (movie.title.toLowerCase().includes(q.toLowerCase()) ||
               (movie.originalTitle &&
                 movie.originalTitle.toLowerCase().includes(q.toLowerCase())))
@@ -916,7 +1191,8 @@ async function createServerApp() {
           kpRating: movie.kpRating,
           imdbRating: movie.imdbRating,
         }));
-
+  
+      setWithCap(searchCache, key, { ts: Date.now(), data: suggestions, mtime: lastModifiedTime }, MAX_SEARCH_CACHE);
       res.json(suggestions);
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -1117,27 +1393,61 @@ async function createServerApp() {
   });
 
   // On-the-fly ресайз постеров: /img?src=/uploads/posts/foo.jpg&w=360&q=70&f=webp
-  app.get("/img", async (req, res) => {
-    try {
-      const src = String(req.query.src || "");
-      const w = Math.max(1, Math.min(1200, parseInt(req.query.w, 10) || 360));
-      const q = Math.max(1, Math.min(95, parseInt(req.query.q, 10) || 70));
-      const f = String(req.query.f || "webp").toLowerCase(); // webp|jpeg|avif
-      const abs = path.join(__dirname, src.replace(/^\//, ""));
-      if (!fsSync.existsSync(abs)) return res.status(404).send("not found");
-      const sharp = require("sharp");
-      let img = sharp(abs).resize({ width: w, withoutEnlargement: true });
-      if (f === "avif") img = img.avif({ quality: q });
-      else if (f === "jpeg" || f === "jpg")
-        img = img.jpeg({ quality: q, mozjpeg: true });
-      else img = img.webp({ quality: q });
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      res.type(f === "jpeg" ? "jpeg" : f);
-      img.pipe(res);
-    } catch {
-      res.status(500).send("img-error");
+// замена обработчика /img
+app.get("/img", async (req, res) => {
+  try {
+    const src = String(req.query.src || "");
+    const w = Math.max(1, Math.min(1200, parseInt(req.query.w, 10) || 360));
+    const q = Math.max(1, Math.min(95, parseInt(req.query.q, 10) || 70));
+    let f = String(req.query.f || "webp").toLowerCase(); // webp|jpeg|avif
+
+    // Только белые директории
+    const uploadsDir = path.join(__dirname, "uploads");
+    const assetsDir  = path.join(__dirname, "assets");
+    const abs = path.join(__dirname, src.replace(/^\//, ""));
+    const norm = path.normalize(abs);
+    const insideAllowed =
+      norm.startsWith(uploadsDir + path.sep) || norm.startsWith(assetsDir + path.sep);
+
+    if (!insideAllowed) return res.status(400).send("bad-src");
+    if (!fsSync.existsSync(norm)) return res.status(404).send("not found");
+
+    // Только валидные исходные расширения
+    const allowedSrcExt = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
+    const srcExt = path.extname(norm).toLowerCase();
+    if (!allowedSrcExt.has(srcExt)) return res.status(415).send("unsupported-image");
+
+    // Только валидные форматы вывода
+    if (!["webp", "jpeg", "jpg", "avif"].includes(f)) f = "webp";
+
+    const sharp = require("sharp");
+    if (!sharpConfigured) {
+      const os = require("os");
+      sharp.concurrency(Math.max(2, Math.min(4, require("os").cpus().length)));
+      sharp.cache({ files: 0, items: 256, memory: 128 });
+      sharpConfigured = true;
     }
-  });
+
+    let img = sharp(norm).resize({ width: w, withoutEnlargement: true });
+    if (f === "avif") img = img.avif({ quality: q });
+    else if (f === "jpeg" || f === "jpg") img = img.jpeg({ quality: q, mozjpeg: true });
+    else img = img.webp({ quality: q });
+
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.type(f === "jpeg" ? "jpeg" : f);
+
+    img.on("error", (err) => {
+      console.error("sharp stream error:", err?.message);
+      if (!res.headersSent) res.status(415).send("unsupported-image");
+      try { res.end(); } catch {}
+    });
+
+    img.pipe(res);
+  } catch (e) {
+    console.error("img handler error:", e?.message);
+    res.status(500).send("img-error");
+  }
+});
 
   // Probe external player URL (server-side) to detect "content not found" pages
   app.get("/api/probe-player", async (req, res) => {
@@ -1197,18 +1507,20 @@ async function createServerApp() {
           status >= 400 || matchedSpecific || matchedTitle || matched404;
       }
 
-      console.log("[probe]", { host, status, matched, looksBad });
       const debug = String(req.query.debug || "") === "1";
       const sample = body.slice(0, 800);
-
-      console.log("[probe-full]", {
-        host,
-        status,
-        matched,
-        looksBad,
-        sample: sample.replace(/\n/g, " "),
-      });
-
+      
+      if (debug) {
+        console.log("[probe]", { host, status, matched, looksBad });
+        console.log("[probe-full]", {
+          host,
+          status,
+          matched,
+          looksBad,
+          sample: sample.replace(/\n/g, " "),
+        });
+      }
+      
       if (debug) {
         return res.json({
           ok: !looksBad,
@@ -1253,7 +1565,8 @@ async function createServerApp() {
   // server.js — рядом с /api/kd-loader.js
   app.get("/api/cdnvh-playerui.js", async (req, res) => {
     try {
-      const upstream = "https://stage.player.cdnvideohub.com/static/playerui.js";
+      const upstream =
+        "https://stage.player.cdnvideohub.com/static/playerui.js";
       const resp = await axios.get(upstream, {
         timeout: 10000,
         headers: {
@@ -1265,19 +1578,26 @@ async function createServerApp() {
         validateStatus: () => true,
       });
       if (resp.status >= 400 || !resp.data) {
-        return res.status(502).type("application/javascript").send("// cdnvh proxy: upstream failed");
+        return res
+          .status(502)
+          .type("application/javascript")
+          .send("// cdnvh proxy: upstream failed");
       }
       res.set("Content-Type", "application/javascript; charset=utf-8");
       res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
       res.send(resp.data);
     } catch (e) {
-      res.status(502).type("application/javascript").send("// cdnvh proxy: request failed");
+      res
+        .status(502)
+        .type("application/javascript")
+        .send("// cdnvh proxy: request failed");
     }
   });
 
   app.get("/api/cdnvh-umd.js", async (req, res) => {
     try {
-      const upstream = "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
+      const upstream =
+        "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
       const resp = await axios.get(upstream, {
         timeout: 15000,
         headers: {
@@ -1289,38 +1609,52 @@ async function createServerApp() {
         validateStatus: () => true,
       });
       if (resp.status >= 400 || !resp.data) {
-        return res.status(502).type("application/javascript").send("// cdnvh umd proxy: upstream failed");
+        return res
+          .status(502)
+          .type("application/javascript")
+          .send("// cdnvh umd proxy: upstream failed");
       }
       res.set("Content-Type", "application/javascript; charset=utf-8");
       // 30 days. You can use 1y + immutable if you always bump the path when upstream changes.
       res.set("Cache-Control", "public, max-age=2592000, immutable");
       res.send(resp.data);
     } catch (e) {
-      res.status(502).type("application/javascript").send("// cdnvh umd proxy: request failed");
+      res
+        .status(502)
+        .type("application/javascript")
+        .send("// cdnvh umd proxy: request failed");
     }
   });
 
-  // (опционально) Прокси Yandex Metrica tag.js — если решите грузить метрику.
-  // ИНИЦИАЛИЗИРУЙТЕ её только после взаимодействия пользователя!
-  // app.get("/api/ym-tag.js", async (req, res) => {
-  //   try {
-  //     const upstream = "https://mc.yandex.ru/metrika/tag.js";
-  //     const resp = await axios.get(upstream, {
-  //       timeout: 10000,
-  //       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/javascript,text/javascript,*/*;q=0.1" },
-  //       responseType: "text",
-  //       validateStatus: () => true,
-  //     });
-  //     if (resp.status >= 400 || !resp.data) {
-  //       return res.status(502).type("application/javascript").send("// ym proxy: upstream failed");
-  //     }
-  //     res.set("Content-Type", "application/javascript; charset=utf-8");
-  //     res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
-  //     res.send(resp.data);
-  //   } catch (e) {
-  //     res.status(502).type("application/javascript").send("// ym proxy: request failed");
-  //   }
-  // });
+  app.get("/api/ym-tag.js", async (req, res) => {
+    try {
+      const upstream = "https://mc.yandex.ru/metrika/tag.js";
+      const resp = await axios.get(upstream, {
+        timeout: 10000,
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "application/javascript,text/javascript,*/*;q=0.1",
+        },
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (resp.status >= 400 || !resp.data) {
+        return res
+          .status(502)
+          .type("application/javascript")
+          .send("// ym proxy: upstream failed");
+      }
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
+      res.send(resp.data);
+    } catch (e) {
+      res
+        .status(502)
+        .type("application/javascript")
+        .send("// ym proxy: request failed");
+    }
+  });
+
   // Прокси для загрузчика Kodik, чтобы обойти блокировки/AdBlock
   app.get("/api/kd-loader.js", async (req, res) => {
     try {
@@ -1367,7 +1701,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
     try {
       const data = await readData();
       const movies = (data?.movies || []).filter(
-        (m) => m.id !== "index" && !isRecentPremiere(m)
+        (m) => m.id !== "index" && !isRecentPremiere(m) && !isHidden(m)
       );
       const now = new Date().toISOString().split("T")[0];
 
@@ -1387,15 +1721,15 @@ Sitemap: ${BASE_URL}/sitemap.xml
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
-          .map(
-            (u) => `  <url>
+  .map(
+    (u) => `  <url>
     <loc>${u.loc}</loc>
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>${u.priority}</priority>
   </url>`
-          )
-          .join("\n")}
+  )
+  .join("\n")}
 </urlset>`;
       res.type("application/xml").send(xml);
     } catch (e) {
@@ -1467,7 +1801,7 @@ ${urls
     if (parts.length === 2) {
       const [cat, id] = parts;
       const m = movies.find((x) => x.id === id);
-      if (!m) {
+      if (!m || isHidden(m)) {
         seo.title = "Страница не найдена — LordFilms";
         seo.description = "Страница не найдена.";
         seo.canonical = `${BASE_URL}${path}`;
@@ -1485,7 +1819,9 @@ ${urls
       seo.ogImage = m.image
         ? m.image.startsWith("http")
           ? m.image
-          : `${BASE_URL}/${m.image.startsWith("/") ? m.image.slice(1) : m.image}`
+          : `${BASE_URL}/${
+              m.image.startsWith("/") ? m.image.slice(1) : m.image
+            }`
         : null;
 
       const rating = m.imdbRating || m.kpRating;
@@ -1637,7 +1973,7 @@ ${urls
 
     return html;
   }
-
+  app.get("/health", (req, res) => res.type("text/plain").send("ok"));
   // SSR catch-all handler (должен быть последним)
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -1679,13 +2015,21 @@ ${urls
         const { render: devRender } = await vite.ssrLoadModule(
           "/src/entry-server.js"
         );
+        // Production режим
         const data = await readData();
 
-        // Сборка initialState по типу маршрута
         const ua = String(req.headers["user-agent"] || "");
         const routeInfo = parseRoute(url);
         const initialState = {};
         const urlObj = new URL(BASE_URL + url);
+
+        // быстрый hit для людей (не боты)
+        if (!isBot(ua)) {
+          const hit = getSsrFromCache(url);
+          if (hit) {
+            return res.status(hit.status).set({ "Content-Type": "text/html" }).end(hit.html);
+          }
+        }
 
         if (routeInfo.type === "home") {
           initialState.homeFeed = getHomeFeed(data);
@@ -1784,6 +2128,16 @@ ${urls
         const seo = computeSeo(url, data, BASE_URL);
         if (process.env.FORCE_NOINDEX === "1") seo.robots = "noindex, nofollow";
         html = injectSeo(html, seo);
+        const AHREFS = process.env.AHREFS_VERIFY_TOKEN;
+        if (
+          AHREFS &&
+          !/<meta\s+name=["']ahrefs-site-verification["'][^>]*>/i.test(html)
+        ) {
+          html = html.replace(
+            "</head>",
+            `  <meta name="ahrefs-site-verification" content="${AHREFS}">\n</head>`
+          );
+        }
         if (seo.status === 404) res.status(404);
       } else {
         // Production режим
@@ -1856,10 +2210,7 @@ ${urls
             type: initialState.topFeed.type,
           };
           scripts.push(
-            `window.__TOP_FEED__=${JSON.stringify(j).replace(
-              /</g,
-              "\\u003c"
-            )}`
+            `window.__TOP_FEED__=${JSON.stringify(j).replace(/</g, "\\u003c")}`
           );
         }
         if (initialState.categoryFeed) {
@@ -1881,14 +2232,43 @@ ${urls
           ? `<script>${scripts.join(";")}</script>`
           : "";
 
-        html = template
-          .replace("<!--preload-links-->", preload)
+        let htmlBase = injectPreloadLinks(template, preload)
           .replace("<!--ssr-outlet-->", appHtml)
           .replace("<!--initial-state-->", stateScript);
 
+        // replaced: Critters runtime processing
+        const withNonBlockingCss = transformStylesheetsToPreload(htmlBase);
+        html = withNonBlockingCss;
+        //     path: path.resolve("dist/client"),
+        //     publicPath: "/",
+        //     preload: "swap", // неблокирующая загрузка остатка CSS
+        //     pruneSource: false, // не вырезаем исходный CSS-файл
+        //     reduceInlineStyles: false,
+        //   });
+        //   html = await critters.process(htmlBase);
+        // } catch (_) {
+        //   // Фолбэк: оставляем ваш неблокирующий конвертер
+        //   const withNonBlockingCss = transformStylesheetsToPreload(htmlBase);
+        //   html = withNonBlockingCss;
+        // }
+
         const seo = computeSeo(url, data, BASE_URL);
         html = injectSeo(html, seo);
+        const AHREFS = process.env.AHREFS_VERIFY_TOKEN;
+        if (
+          AHREFS &&
+          !/<meta\s+name=["']ahrefs-site-verification["'][^>]*>/i.test(html)
+        ) {
+          html = html.replace(
+            "</head>",
+            `  <meta name="ahrefs-site-verification" content="${AHREFS}">\n</head>`
+          );
+        }
         if (seo.status === 404) res.status(404);
+      
+        if (!isBot(ua)) {
+          setSsrToCache(url, html, res.statusCode || 200);
+        }
       }
 
       res.set({ "Content-Type": "text/html" }).end(html);
@@ -1901,14 +2281,17 @@ ${urls
     }
   });
 
-  // Запуск сервера
-  app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-    console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
-    console.log(
-      `Статические файлы доступны по адресу: http://localhost:${PORT}`
-    );
-  });
+// Warm the big JSON cache once at startup to avoid concurrent first-loads
+await readData();
+
+// Запуск сервера
+app.listen(PORT, () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
+  console.log(
+    `Статические файлы доступны по адресу: http://localhost:${PORT}`
+  );
+});
 
   return app;
 }

@@ -6,7 +6,7 @@
       </div>
       <div class="site-footer__notify mr-auto">
         <p>Вся информация на данном сайте размещена только для личного, некоммерческого ознакомления.</p>
-        <p>Связь с правообладателями — через почту: content-abu@proton.me</p>
+        <p>Связь с правообладателями — через почту: contentab@proton.me</p>
       </div>
     </div>
     <div class="site-site-footer__bottom d-flex ai-center jc-center r-gap-20 c-gap-20">

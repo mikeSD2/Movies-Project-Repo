@@ -10,15 +10,22 @@ export default defineConfig({
     }
   })],
   server: {
-    port: 3000
+    port: 3000,
+    watch: {
+      // Reduce chokidar overhead in dev
+      ignored: [
+        '**/movies-data.json',
+        '**/server-data/**',
+        '**/uploads/**',
+        '**/dist/**'
+      ]
+    }
   },
   build: {
     cssCodeSplit: true,
     ssrManifest: true,
     rollupOptions: {
-      input: {
-        main: './index.html'
-      }
+      input: { main: './index.html' }
     }
   }
 })

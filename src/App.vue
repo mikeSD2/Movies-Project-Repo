@@ -100,9 +100,19 @@ onMounted(() => {
   // Инициализируем тему только на клиенте
   switchTheme()
 
-  // Сбрасываем результаты при любой навигации
-  router.afterEach(() => {
+  // Сбрасываем результаты при любой навигации + отправляем hit в Я.Метрику
+  router.afterEach((to, from) => {
     clearSearch()
+    try {
+      if (window.ym && window.YM_ID) {
+        const url = to.fullPath || (location.pathname + location.search)
+        const referer = from && from.fullPath ? from.fullPath : undefined
+        ym(window.YM_ID, 'hit', url, {
+          title: document.title,
+          referer
+        })
+      }
+    } catch (_) {}
   })
 
   // Сбрасываем при клике по любой ссылке, кроме "Загрузить еще"
@@ -119,6 +129,30 @@ onMounted(() => {
     document.removeEventListener('click', onDocClick)
   })
 })
+
+// export default {
+//   setup() {
+//     onMounted(() => {
+//       const initYM = () => {
+//         if (window.__ymLoaded) return;
+//         window.__ymLoaded = true;
+//         const s = document.createElement('script');
+//         s.src = '/api/ym-tag.js';
+//         s.async = true;
+//         s.onload = () => {
+//           try {
+//             window.ym && window.ym(YOUR_YM_ID, 'init', {
+//               clickmap: true, trackLinks: true, accurateTrackBounce: true
+//             });
+//           } catch {}
+//         };
+//         document.head.appendChild(s);
+//       };
+//       window.addEventListener('pointerdown', initYM, { once: true });
+//       window.addEventListener('keydown', initYM,   { once: true });
+//     });
+//   }
+// }
 
 </script>
 

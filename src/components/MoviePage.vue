@@ -137,14 +137,14 @@
                       ><span v-if="index < movie.genres.length - 1">, </span>
                     </template>
                   </li>
-                  <li v-if="movie.translation">
-                    <span>Перевод:</span
-                    ><router-link
-                      :to="`/${movie.category}?translation=${encodeURIComponent(
-                        movie.translation
-                      )}`"
-                      >{{ movie.translation }}</router-link
-                    >
+                  <li v-if="translationsList.length">
+                    <span>Перевод:</span>
+                    <template v-for="(tr, index) in translationsList" :key="tr">
+                      <router-link
+                        :to="`/${movie.category}?translation=${encodeURIComponent(tr)}`"
+                      >{{ tr }}</router-link
+                      ><span v-if="index < translationsList.length - 1">, </span>
+                    </template>
                   </li>
                   <li v-if="movie.ageRating">
                     <span>Возраст:</span>{{ movie.ageRating }}
@@ -779,13 +779,14 @@ const posterSrcset = computed(() => {
   if (!rel) return "";
   const mk = (w) => `/img?src=${encodeURIComponent(rel)}&w=${w}&q=60&f=webp`;
   return [
+    `${mk(220)} 220w`,
     `${mk(360)} 360w`,
     `${mk(540)} 540w`,
     `${mk(720)} 720w`,
     `${mk(1080)} 1080w`
   ].join(", ");
 });
-const posterSizes = "(max-width: 760px) 85vw, (max-width: 1220px) 240px, 240px";
+const posterSizes = "(max-width: 760px) 42vw, (max-width: 1220px) 240px, 240px";
 
 const countriesList = computed(() => {
   const c = movie.value?.country;
@@ -803,6 +804,14 @@ const actorsList = computed(() => {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+});
+
+const translationsList = computed(() => {
+  const t = movie.value?.translation;
+  if (!t) return [];
+  return Array.isArray(t)
+    ? t.map((s) => String(s).trim()).filter(Boolean)
+    : [String(t).trim()].filter(Boolean);
 });
 
 function updateSeo() {
@@ -1383,6 +1392,7 @@ watch(isLightOff, (newValue) => {
 const relatedMovies = computed(() => state.related || []);
 
 async function refreshRelatedIfNeeded() {
+  if (typeof window === "undefined") return; // SSR guard
   if (!movie.value || state.related?.length) return;
   try {
     const resp = await fetch(`/api/related/${movie.value.id}`);
@@ -1390,15 +1400,15 @@ async function refreshRelatedIfNeeded() {
       const data = await resp.json();
       state.related = data.items || [];
     }
-  } catch (e) {
+  } catch (e) { 
     console.error("Ошибка загрузки похожих:", e);
   }
 }
-watch(
-  () => movie.value && movie.value.id,
-  () => refreshRelatedIfNeeded(),
-  { immediate: true }
-);
+
+// вместо immediate SSR-вызова — запуск на клиенте
+onMounted(() => {
+  refreshRelatedIfNeeded();
+});
 
 // Состояние для оценок страницы
 const pageLikes = ref(0);
@@ -1820,26 +1830,16 @@ const getUserVote = (commentId) => {
   return localStorage.getItem(voteKey);
 };
 
-// Функция для ожидания загрузки reCAPTCHA
 const waitForRecaptcha = () => {
   return new Promise((resolve) => {
-    if (window.grecaptcha) {
-      resolve();
-      return;
-    }
-
-    const checkInterval = setInterval(() => {
-      if (window.grecaptcha) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 100);
-
-    // Таймаут через 5 секунд
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      resolve();
-    }, 5000);
+    if (window.grecaptcha) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://www.google.com/recaptcha/api.js?hl=ru";
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
   });
 };
 
@@ -1849,15 +1849,6 @@ onMounted(() => {
   window.addEventListener("message", handleCdnMessage);
   loadPageRatings();
   loadComments();
-
-  // Загружаем Google reCAPTCHA
-  if (!window.grecaptcha) {
-    const script = document.createElement("script");
-    script.src = "https://www.google.com/recaptcha/api.js?hl=ru";
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-  }
 
   // если среди players есть SV — заранее прогреваем скрипт
   if (players.value.some((p) => p.type === "sv")) {
@@ -1871,12 +1862,10 @@ const cdnPlayerLoaded = ref(false);
 
 function ensureCdnVideoHub() {
   if (cdnPlayerLoaded.value) return;
-  const exists = document.querySelector(
-    'script[src*="player.cdnvideohub.com/s2/stable/video-player.umd.js"]'
-  );
+  const exists = document.querySelector('script[src*="/api/cdnvh-umd.js"]');
   if (!exists) {
     const s = document.createElement("script");
-    s.src = "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
+    s.src = "/api/cdnvh-umd.js";
     s.async = true;
     s.onload = () => {
       cdnPlayerLoaded.value = true;
