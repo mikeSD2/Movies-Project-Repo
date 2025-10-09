@@ -47,33 +47,33 @@
             <ul class="navbar__nav-hidden-col">
               <li><router-link to="/filmy" @click="closeMobileMenu">Все</router-link></li>
               <li>По году:</li>
-              <li><a href="#" @click.prevent="navigate('/filmy?year=2025')">2025</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?year=2024')">2024</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?year=2023')">2023</a></li>
+              <li><router-link to="/filmy?year=2025" @click="closeMobileMenu">2025</router-link></li>
+              <li><router-link to="/filmy?year=2024" @click="closeMobileMenu">2024</router-link></li>
+              <li><router-link to="/filmy?year=2023" @click="closeMobileMenu">2023</router-link></li>
             </ul>
             <ul class="navbar__nav-hidden-col">
               <li>По жанрам:</li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Биография')">Биографические</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Боевик')">Боевики</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Вестерн')">Вестерны</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Военные')">Военные</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Документальный')">Документальные</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Детектив')">Детективы</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Семейный')">Детские</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Драмы')">Драмы</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=История')">Исторические</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Комедия')">Комедии</a></li>
+              <li><router-link to="/filmy?genre=Биография" @click="closeMobileMenu">Биографические</router-link></li>
+              <li><router-link to="/filmy?genre=Боевик" @click="closeMobileMenu">Боевики</router-link></li>
+              <li><router-link to="/filmy?genre=Вестерн" @click="closeMobileMenu">Вестерны</router-link></li>
+              <li><router-link to="/filmy?genre=Военный" @click="closeMobileMenu">Военные</router-link></li>
+              <li><router-link to="/filmy?genre=Документальный" @click="closeMobileMenu">Документальные</router-link></li>
+              <li><router-link to="/filmy?genre=Детектив" @click="closeMobileMenu">Детективы</router-link></li>
+              <li><router-link to="/filmy?genre=Семейный" @click="closeMobileMenu">Детские</router-link></li>
+              <li><router-link to="/filmy?genre=Драмы" @click="closeMobileMenu">Драмы</router-link></li>
+              <li><router-link to="/filmy?genre=История" @click="closeMobileMenu">Исторические</router-link></li>
+              <li><router-link to="/filmy?genre=Комедия" @click="closeMobileMenu">Комедии</router-link></li>
             </ul>
             <ul class="navbar__nav-hidden-col">
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Криминал')">Криминал</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Мелодрама')">Мелодрамы</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Приключения')">Приключения</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Семейный')">Семейные</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Спорт')">Спорт</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Триллер')">Триллеры</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Ужасы')">Ужасы</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Фантастика')">Фантастика</a></li>
-              <li><a href="#" @click.prevent="navigate('/filmy?genre=Фэнтези')">Фэнтези</a></li>
+              <li><router-link to="/filmy?genre=Криминал" @click="closeMobileMenu">Криминал</router-link></li>
+              <li><router-link to="/filmy?genre=Мелодрама" @click="closeMobileMenu">Мелодрамы</router-link></li>
+              <li><router-link to="/filmy?genre=Приключения" @click="closeMobileMenu">Приключения</router-link></li>
+              <li><router-link to="/filmy?genre=Семейный" @click="closeMobileMenu">Семейные</router-link></li>
+              <li><router-link to="/filmy?genre=Спорт" @click="closeMobileMenu">Спорт</router-link></li>
+              <li><router-link to="/filmy?genre=Триллер" @click="closeMobileMenu">Триллеры</router-link></li>
+              <li><router-link to="/filmy?genre=Ужасы" @click="closeMobileMenu">Ужасы</router-link></li>
+              <li><router-link to="/filmy?genre=Фантастика" @click="closeMobileMenu">Фантастика</router-link></li>
+              <li><router-link to="/filmy?genre=Фэнтези" @click="closeMobileMenu">Фэнтези</router-link></li>
             </ul>
           </div>
         </li>
@@ -83,36 +83,36 @@
             <ul class="navbar__nav-hidden-col">
               <li><router-link to="/serialy" @click="closeMobileMenu">Все</router-link></li>
               <li>По году:</li>
-              <li><a href="#" @click.prevent="navigate('/serialy?year=2023')">2023</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?year=2024')">2024</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?year=2025')">2025</a></li>
+              <li><router-link to="/serialy?year=2023" @click="closeMobileMenu">2023</router-link></li>
+              <li><router-link to="/serialy?year=2024" @click="closeMobileMenu">2024</router-link></li>
+              <li><router-link to="/serialy?year=2025" @click="closeMobileMenu">2025</router-link></li>
             </ul>
             <ul class="navbar__nav-hidden-col">
               <li>По жанрам:</li>
-              <li><a href="#" @click.prevent="navigate('/serialy?special=doramas')">Дорамы</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?special=turkish')">Турецкие сериалы</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Биография')">Биография</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Боевик')">Боевик</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Вестерн')">Вестерн</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Военный')">Военный</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Документальный')">Документальный</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Детектив')">Детектив</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Семейный')">Детский</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Драма')">Драма</a></li>
+              <li><router-link to="/serialy?special=doramas" @click="closeMobileMenu">Дорамы</router-link></li>
+              <li><router-link to="/serialy?special=turkish" @click="closeMobileMenu">Турецкие сериалы</router-link></li>
+              <li><router-link to="/serialy?genre=Биография" @click="closeMobileMenu">Биография</router-link></li>
+              <li><router-link to="/serialy?genre=Боевик" @click="closeMobileMenu">Боевик</router-link></li>
+              <li><router-link to="/serialy?genre=Вестерн" @click="closeMobileMenu">Вестерн</router-link></li>
+              <li><router-link to="/serialy?genre=Военный" @click="closeMobileMenu">Военный</router-link></li>
+              <li><router-link to="/serialy?genre=Документальный" @click="closeMobileMenu">Документальный</router-link></li>
+              <li><router-link to="/serialy?genre=Детектив" @click="closeMobileMenu">Детектив</router-link></li>
+              <li><router-link to="/serialy?genre=Детский" @click="closeMobileMenu">Детский</router-link></li>
+              <li><router-link to="/serialy?genre=Драма" @click="closeMobileMenu">Драма</router-link></li>
             </ul>
             <ul class="navbar__nav-hidden-col">
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=История')">Исторический</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Комедия')">Комедия</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Криминал')">Криминал</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Мелодрама')">Мелодрама</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Музыка')">Музыка</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Приключения')">Приключения</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Семейный')">Семейный</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Спорт')">Спорт</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Триллер')">Триллер</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Ужасы')">Ужасы</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Фантастика')">Фантастика</a></li>
-              <li><a href="#" @click.prevent="navigate('/serialy?genre=Фэнтези')">Фэнтези</a></li>
+              <li><router-link to="/serialy?genre=История" @click="closeMobileMenu">Исторический</router-link></li>
+              <li><router-link to="/serialy?genre=Комедия" @click="closeMobileMenu">Комедия</router-link></li>
+              <li><router-link to="/serialy?genre=Криминал" @click="closeMobileMenu">Криминал</router-link></li>
+              <li><router-link to="/serialy?genre=Мелодрама" @click="closeMobileMenu">Мелодрама</router-link></li>
+              <li><router-link to="/serialy?genre=Музыка" @click="closeMobileMenu">Музыка</router-link></li>
+              <li><router-link to="/serialy?genre=Приключения" @click="closeMobileMenu">Приключения</router-link></li>
+              <li><router-link to="/serialy?genre=Семейный" @click="closeMobileMenu">Семейный</router-link></li>
+              <li><router-link to="/serialy?genre=Спорт" @click="closeMobileMenu">Спорт</router-link></li>
+              <li><router-link to="/serialy?genre=Триллер" @click="closeMobileMenu">Триллер</router-link></li>
+              <li><router-link to="/serialy?genre=Ужасы" @click="closeMobileMenu">Ужасы</router-link></li>
+              <li><router-link to="/serialy?genre=Фантастика" @click="closeMobileMenu">Фантастика</router-link></li>
+              <li><router-link to="/serialy?genre=Фэнтези" @click="closeMobileMenu">Фэнтези</router-link></li>
             </ul>
           </div>
         </li>

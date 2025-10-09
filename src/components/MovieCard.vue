@@ -71,15 +71,15 @@ const fallbackSrc = computed(() => {
   return `/${props.movie.image}`
 })
 
-// srcset для карточки: 180/360/540/720, sizes под десктоп шире
-const sizes = '(min-width:1600px) 260px, (min-width:1366px) 220px, (min-width:1220px) 200px, (min-width:760px) 25vw, 45vw'
+// sizes оставляем 42vw (порог для 220 ≈ 220/0.42 ≈ 524px при DPR=1)
+const sizes = '(min-width:1600px) 260px, (min-width:1366px) 220px, (min-width:1220px) 200px, (min-width:760px) 25vw, 42vw'
 const srcSet = computed(() => {
   if (!props.movie.image) return ''
   const rel = props.movie.image.startsWith('http') ? null : `/${props.movie.image}`
-  if (!rel) return '' // внешний URL — оставим как есть
-const mk = (w) => `/img?src=${encodeURIComponent(rel)}&w=${w}&q=60&f=webp`
+  if (!rel) return ''
+  const mk = (w) => `/img?src=${encodeURIComponent(rel)}&w=${w}&q=60&f=webp`
   return [
-    `${mk(180)} 180w`,
+    `${mk(220)} 220w`,
     `${mk(360)} 360w`,
     `${mk(540)} 540w`,
     `${mk(720)} 720w`

@@ -120,6 +120,30 @@ onMounted(() => {
   })
 })
 
+// export default {
+//   setup() {
+//     onMounted(() => {
+//       const initYM = () => {
+//         if (window.__ymLoaded) return;
+//         window.__ymLoaded = true;
+//         const s = document.createElement('script');
+//         s.src = '/api/ym-tag.js';
+//         s.async = true;
+//         s.onload = () => {
+//           try {
+//             window.ym && window.ym(YOUR_YM_ID, 'init', {
+//               clickmap: true, trackLinks: true, accurateTrackBounce: true
+//             });
+//           } catch {}
+//         };
+//         document.head.appendChild(s);
+//       };
+//       window.addEventListener('pointerdown', initYM, { once: true });
+//       window.addEventListener('keydown', initYM,   { once: true });
+//     });
+//   }
+// }
+
 </script>
 
 <style>

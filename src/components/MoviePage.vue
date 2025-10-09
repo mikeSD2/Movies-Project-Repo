@@ -779,13 +779,14 @@ const posterSrcset = computed(() => {
   if (!rel) return "";
   const mk = (w) => `/img?src=${encodeURIComponent(rel)}&w=${w}&q=60&f=webp`;
   return [
+    `${mk(220)} 220w`,
     `${mk(360)} 360w`,
     `${mk(540)} 540w`,
     `${mk(720)} 720w`,
     `${mk(1080)} 1080w`
   ].join(", ");
 });
-const posterSizes = "(max-width: 760px) 85vw, (max-width: 1220px) 240px, 240px";
+const posterSizes = "(max-width: 760px) 42vw, (max-width: 1220px) 240px, 240px";
 
 const countriesList = computed(() => {
   const c = movie.value?.country;
@@ -1820,26 +1821,16 @@ const getUserVote = (commentId) => {
   return localStorage.getItem(voteKey);
 };
 
-// Функция для ожидания загрузки reCAPTCHA
 const waitForRecaptcha = () => {
   return new Promise((resolve) => {
-    if (window.grecaptcha) {
-      resolve();
-      return;
-    }
-
-    const checkInterval = setInterval(() => {
-      if (window.grecaptcha) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 100);
-
-    // Таймаут через 5 секунд
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      resolve();
-    }, 5000);
+    if (window.grecaptcha) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://www.google.com/recaptcha/api.js?hl=ru";
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
   });
 };
 
@@ -1849,15 +1840,6 @@ onMounted(() => {
   window.addEventListener("message", handleCdnMessage);
   loadPageRatings();
   loadComments();
-
-  // Загружаем Google reCAPTCHA
-  if (!window.grecaptcha) {
-    const script = document.createElement("script");
-    script.src = "https://www.google.com/recaptcha/api.js?hl=ru";
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-  }
 
   // если среди players есть SV — заранее прогреваем скрипт
   if (players.value.some((p) => p.type === "sv")) {
@@ -1871,12 +1853,10 @@ const cdnPlayerLoaded = ref(false);
 
 function ensureCdnVideoHub() {
   if (cdnPlayerLoaded.value) return;
-  const exists = document.querySelector(
-    'script[src*="player.cdnvideohub.com/s2/stable/video-player.umd.js"]'
-  );
+  const exists = document.querySelector('script[src*="/api/cdnvh-umd.js"]');
   if (!exists) {
     const s = document.createElement("script");
-    s.src = "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
+    s.src = "/api/cdnvh-umd.js";
     s.async = true;
     s.onload = () => {
       cdnPlayerLoaded.value = true;

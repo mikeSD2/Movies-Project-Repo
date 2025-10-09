@@ -566,6 +566,16 @@ async function createServerApp() {
     await writeStore(COMMENTS_FILE, store);
   }
 
+  function transformStylesheetsToPreload(html) {
+    return html.replace(/<link\s+rel=["']stylesheet["'][^>]*href=["'](\/assets\/[^"']+\.css)["'][^>]*>\s*/gi, (m, href) => {
+      const hasCross = /crossorigin/i.test(m) ? ' crossorigin' : '';
+      const mediaMatch = m.match(/\smedia=["']([^"']+)["']/i);
+      const mediaAttr = mediaMatch ? ` media="${mediaMatch[1]}"` : '';
+      return `<link rel="preload" as="style" href="${href}"${hasCross}${mediaAttr} onload="this.onload=null;this.rel='stylesheet'">` +
+             `<noscript><link rel="stylesheet" href="${href}"${hasCross}${mediaAttr}></noscript>`;
+    });
+  }
+
   async function getCommentsForMovie(movieId) {
     const store = await getCommentsStore();
     if (!store[movieId]) {
@@ -631,6 +641,23 @@ async function createServerApp() {
       console.error("Error verifying reCAPTCHA:", error);
       return { success: false, "error-codes": ["request-failed"] };
     }
+  }
+
+  function stripBlockingCssLinks(html) {
+    // Удаляем любые rel="stylesheet" на /assets/*.css
+    return html.replace(
+      /<link\s+rel=["']stylesheet["'][^>]*href=["']\/assets\/[^"']+\.css["'][^>]*>\s*/gi,
+      ""
+    );
+  }
+  
+  function injectPreloadLinks(html, preload) {
+    if (!preload) return html;
+    if (html.includes("<!--preload-links-->")) {
+      return html.replace("<!--preload-links-->", preload);
+    }
+    // Если плейсхолдера нет, вставляем перед </head>
+    return html.replace("</head>", `${preload}\n</head>`);
   }
 
   app.get("/api/movies-data", async (req, res) => {
@@ -1300,27 +1327,26 @@ async function createServerApp() {
     }
   });
 
-  // (опционально) Прокси Yandex Metrica tag.js — если решите грузить метрику.
-  // ИНИЦИАЛИЗИРУЙТЕ её только после взаимодействия пользователя!
-  // app.get("/api/ym-tag.js", async (req, res) => {
-  //   try {
-  //     const upstream = "https://mc.yandex.ru/metrika/tag.js";
-  //     const resp = await axios.get(upstream, {
-  //       timeout: 10000,
-  //       headers: { "User-Agent": "Mozilla/5.0", Accept: "application/javascript,text/javascript,*/*;q=0.1" },
-  //       responseType: "text",
-  //       validateStatus: () => true,
-  //     });
-  //     if (resp.status >= 400 || !resp.data) {
-  //       return res.status(502).type("application/javascript").send("// ym proxy: upstream failed");
-  //     }
-  //     res.set("Content-Type", "application/javascript; charset=utf-8");
-  //     res.set("Cache-Control", "public, max-age=2592000, immutable"); // 30d
-  //     res.send(resp.data);
-  //   } catch (e) {
-  //     res.status(502).type("application/javascript").send("// ym proxy: request failed");
-  //   }
-  // });
+  app.get("/api/ym-tag.js", async (req, res) => {
+    try {
+      const upstream = "https://mc.yandex.ru/metrika/tag.js";
+      const resp = await axios.get(upstream, {
+        timeout: 10000,
+        headers: { "User-Agent": "Mozilla/5.0", Accept: "application/javascript,text/javascript,*/*;q=0.1" },
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (resp.status >= 400 || !resp.data) {
+        return res.status(502).type("application/javascript").send("// ym proxy: upstream failed");
+      }
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
+      res.send(resp.data);
+    } catch (e) {
+      res.status(502).type("application/javascript").send("// ym proxy: request failed");
+    }
+  });
+
   // Прокси для загрузчика Kodik, чтобы обойти блокировки/AdBlock
   app.get("/api/kd-loader.js", async (req, res) => {
     try {
@@ -1881,10 +1907,25 @@ ${urls
           ? `<script>${scripts.join(";")}</script>`
           : "";
 
-        html = template
-          .replace("<!--preload-links-->", preload)
+          let htmlBase = injectPreloadLinks(template, preload)
           .replace("<!--ssr-outlet-->", appHtml)
           .replace("<!--initial-state-->", stateScript);
+        
+        try {
+          const { default: Critters } = await import('critters');
+          const critters = new Critters({
+            path: path.resolve('dist/client'),
+            publicPath: '/',
+            preload: 'swap',       // неблокирующая загрузка остатка CSS
+            pruneSource: false,    // не вырезаем исходный CSS-файл
+            reduceInlineStyles: false
+          });
+          html = await critters.process(htmlBase);
+        } catch (_) {
+          // Фолбэк: оставляем ваш неблокирующий конвертер
+          const withNonBlockingCss = transformStylesheetsToPreload(htmlBase);
+          html = withNonBlockingCss;
+        }
 
         const seo = computeSeo(url, data, BASE_URL);
         html = injectSeo(html, seo);
