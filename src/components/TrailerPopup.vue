@@ -26,7 +26,7 @@
         >
           Смотреть онлайн
         </router-link>
-        <div class="rich-text" v-html="movie.descriptionHtml || movie.description"></div>
+        <div class="richtxt" v-html="movie.descriptionHtml || movie.description"></div>
       </div>
     </div>
     <button 

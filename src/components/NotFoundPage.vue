@@ -7,10 +7,21 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'NotFoundPage'
-}
+<script setup>
+import { onMounted } from "vue"
+import { setMeta, setCanonical } from "../assets/seoUtils.js"
+
+defineOptions({ name: "NotFoundPage" })
+
+onMounted(() => {
+  if (typeof window === "undefined") return
+  const origin = window.location.origin
+  const url = origin + window.location.pathname
+  document.title = "Страница не найдена — ProsmotrZone"
+  setMeta("description", "Страница не найдена.")
+  setMeta("robots", "noindex,follow")
+  setCanonical(url)
+})
 </script>
 
 <style scoped>
@@ -31,7 +42,7 @@ h1 {
   font-size: clamp(3rem, 18vw, 8rem);
   line-height: 0.9;
   margin: 0;
-  color: var(--green);
+  color: var(--clr-green);
 }
 
 h2 {
@@ -50,17 +61,17 @@ p {
 
 .home-link {
   padding: 10px 20px;
-  background-color: var(--green);
+  background-color: var(--clr-green);
   color: #fff;
   text-decoration: none;
   border-radius: 4px;
   font-weight: 600;
   transition: background-color 0.2s ease, transform 0.1s ease;
-  border: 1px solid var(--green);
+  border: 1px solid var(--clr-green);
 }
 
 .home-link:hover {
-  background-color: #41c24a; /* чуть светлее var(--green) */
+  background-color: #41c24a; /* чуть светлее var(--clr-green) */
   transform: translateY(-1px);
 }
 </style>

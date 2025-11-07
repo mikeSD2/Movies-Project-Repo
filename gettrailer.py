@@ -166,17 +166,18 @@ def get_best_trailer(movie, search_results):
         'сцена', 'момент', 'фрагмент', 'scene', 'fragment',
         # Фильм целиком и прочее
         'full movie', 'полный фильм', 'фильм целиком',
-        # Игры/прочее
-        'игра', 'game', "let's play", 'прохождение',
+        # Игры/прочее (более точные термины вместо «игра»/«game»)
+        "let's play", 'прохождение', 'gameplay', 'walkthrough', 'playthrough', 'геймплей', 'стрим', 'stream',
         # Фанатское/фейки/пародии/шортсы
         'fan made', 'фанатский', 'fake', 'фейк', 'пародия', 'parody', '#shorts', 'shorts'
     ]
 
     def years_in(s: str):
-        return [int(y) for y in re.findall(r'\b(19|20)\d{2}\b', s)]
+        return [int(y) for y in re.findall(r'\b(?:19|20)\d{2}\b', s)]
 
     for video in search_results:
         video_title_norm = (video.get('title') or '').lower()
+        video_title_raw = (video.get('title') or '')
         if not video_title_norm:
             continue
 
@@ -190,30 +191,130 @@ def get_best_trailer(movie, search_results):
 
         score = 0
 
-        # Совпадение по названию
-        if movie_title_ru_norm and movie_title_ru_norm in video_title_norm:
-            score += 10
-        if movie_title_orig_norm and movie_title_orig_norm in video_title_norm:
-            score += 10
-        if score == 0:
-            # Если ни одно название не совпало — пропускаем
+        # Совпадение по названию (границы слова + ранняя позиция + структурные маркеры + защита однословных)
+        def phrase_positions(text: str, phrase: str):
+            if not phrase:
+                return []
+            return [m.start() for m in re.finditer(r'\b' + re.escape(phrase) + r'\b', text)]
+
+        def has_structural_markers(text: str, phrase: str) -> bool:
+            markers = [
+                f'"{phrase}"', f'«{phrase}»', f'({phrase})',
+                f'{phrase} -', f'{phrase} —', f'{phrase}:', f'{phrase}.'
+            ]
+            return any(m in text for m in markers)
+
+        def is_early_by_chars_start(text: str, phrase: str, k: int = 30) -> bool:
+            m = re.search(r'\b' + re.escape(phrase) + r'\b', text)
+            return bool(m and m.start() <= k)
+
+        def next_token_after(raw: str, start: int, phrase: str) -> str | None:
+            end = start + len(phrase)
+            i = end
+            while i < len(raw) and raw[i] in ' \t.,:;!?—-–()[]{}"«»':
+                i += 1
+            if i >= len(raw):
+                return None
+            j = i
+            while j < len(raw) and raw[j] not in ' \t.,:;!?—-–()[]{}"«»':
+                j += 1
+            return raw[i:j]
+
+                # "Безопасная" обёртка вокруг названия
+        def has_safe_wrapping(text: str, phrase: str) -> bool:
+            markers = [
+                f'"{phrase}"', f'«{phrase}»', f'({phrase})',
+            ]
+            return any(m in text for m in markers)
+
+        # Пунктуационный маркер сразу после названия разрешён только если следующее слово whitelisted
+        def punct_marker_allowed(raw: str, start: int, phrase: str, whitelist: set[str]) -> bool:
+            end = start + len(phrase)
+            i = end
+            # пробелы
+            while i < len(raw) and raw[i] in ' \t':
+                i += 1
+            if i >= len(raw):
+                return False
+            # допустимый маркер
+            if raw[i] not in '-—:.':
+                return False
+            i += 1
+            # пробелы после маркера
+            while i < len(raw) and raw[i] in ' \t':
+                i += 1
+            if i >= len(raw):
+                return False
+            # взять следующее слово
+            j = i
+            while j < len(raw) and raw[j] not in ' \t.,:;!?—-–()[]{}"«»':
+                j += 1
+            tok = raw[i:j].lower()
+            return tok in whitelist
+
+        ru_pos = phrase_positions(video_title_norm, movie_title_ru_norm)
+        en_pos = phrase_positions(video_title_norm, movie_title_orig_norm)
+
+        title_points = 0
+        whitelist_after = {
+            # базовые
+            'трейлер', 'тизер', 'trailer', 'teaser', 'official', 'официальный',
+            'фильм', 'сериал', 'film', 'movie', 'series',
+            # локализация/озвучка
+            'русский', 'russian', 'дублированный', 'дубляж', 'озвучка',
+            # субтитры
+            'субтитры', 'sub', 'subs', 'subtitle', 'subtitles',
+            # варианты релизного типа
+            'international', 'интернациональный', 'final', 'финальный',
+            'promo', 'промо', 'анонс', 'announcement'
+        }
+        if ru_pos:
+            early = is_early_by_chars_start(video_title_norm, movie_title_ru_norm, k=30)
+            structural = has_structural_markers(video_title_norm, movie_title_ru_norm)
+            is_single_ru = (movie_title_ru_norm and ' ' not in movie_title_ru_norm)
+
+            allow = early  # однословные: сначала требуем раннюю позицию ≤30
+            if is_single_ru and allow:
+                ru_start = ru_pos[0]
+                tok = (next_token_after(video_title_raw, ru_start, movie_title_ru_norm) or '').lower()
+                wrap_ok = has_safe_wrapping(video_title_norm, movie_title_ru_norm)
+                punct_ok = punct_marker_allowed(video_title_raw, ru_start, movie_title_ru_norm, whitelist_after)
+                # нужно: безопасная обёртка ИЛИ (пунктуация сразу после + whitelisted слово) ИЛИ следующий токен whitelisted
+                allow = wrap_ok or punct_ok or (tok in whitelist_after)
+
+            title_points = 10 if allow else 0
+
+        elif en_pos:
+            short_en = (movie_title_orig_norm and ' ' not in movie_title_orig_norm and len(movie_title_orig_norm) <= 6)
+            early = is_early_by_chars_start(video_title_norm, movie_title_orig_norm, k=30)
+            structural = has_structural_markers(video_title_norm, movie_title_orig_norm)
+
+            allow = early  # однословные EN: требуем раннюю позицию ≤30
+            if short_en and allow:
+                en_start = en_pos[0]
+                tok = (next_token_after(video_title_raw, en_start, movie_title_orig_norm) or '').lower()
+                wrap_ok = has_safe_wrapping(video_title_norm, movie_title_orig_norm)
+                punct_ok = punct_marker_allowed(video_title_raw, en_start, movie_title_orig_norm, whitelist_after)
+                allow = wrap_ok or punct_ok or (tok in whitelist_after)
+
+            title_points = 8 if allow else 0
+
+        if title_points == 0:
             continue
+        score += title_points
 
         # Официальность в заголовке
         if 'официальный' in video_title_norm or 'official' in video_title_norm:
             score += 5
 
-        # Близость года из заголовка к году фильма
+        # Год: обязателен и должен совпадать ровно
         if movie_year_int:
             yts = years_in(video_title_norm)
-            if yts:
-                mind = min(abs(y - movie_year_int) for y in yts)
-                if mind <= 1:
-                    score += 8
-                elif mind <= 3:
-                    score += 3
-                else:
-                    score -= 25  # жёстко отсекаем чужие годы (пример: "Схватка 2011" для фильма 1972)
+            if not yts or movie_year_int not in yts:
+                # жёстко отбрасываем кандидата без точного года в заголовке
+                continue
+            # точный год найден → фиксированный бонус
+            score += 8
 
         # Длительность, похожая на трейлер
         duration_str = video.get('duration')
@@ -240,7 +341,7 @@ def get_best_trailer(movie, search_results):
 
         if ch_name:
             official_ch_keys = [
-                'официальный', 'official', 'pictures', 'film', 'films', 'кино', 'кинокомпания',
+                'официальный', 'official', 'pictures', 'film', 'films', 'кино', 'kino', 'кинокомпания',
                 'distributor', 'warner', 'sony', 'fox', 'paramount', 'universal', 'netflix', 'hbomax'
             ]
             music_ch_keys = ['vevo', 'records', 'music', 'band', 'несчастный', 'случай', 'label']
@@ -262,13 +363,46 @@ def get_best_trailer(movie, search_results):
             highest_score = score
             best_candidate = video
 
-    if highest_score >= 15:
+    if highest_score >= 14:
         return best_candidate, highest_score
     return None, highest_score
 
+def youtube_search(query: str, limit: int = 8, region: str = "US", proxy: str | None = None) -> list[dict]:
+    from yt_dlp import YoutubeDL
+
+    ydl_opts = {
+        "quiet": True,
+        "skip_download": True,
+        "proxy": proxy,  # например: "http://127.0.0.1:8080"
+        "geo_bypass": True,
+        "noplaylist": True,
+        "extract_flat": "in_playlist",
+        "default_search": "ytsearch",
+    }
+
+    with YoutubeDL(ydl_opts) as ydl:
+        data = ydl.extract_info(f"ytsearch{limit}:{query}", download=False)
+        entries = data.get("entries", []) if isinstance(data, dict) else []
+
+    results = []
+    for e in entries:
+        dur = e.get("duration")
+        duration_str = None
+        if isinstance(dur, int):
+            m, s = divmod(dur, 60)
+            h, m = divmod(m, 60)
+            duration_str = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+        results.append({
+            "id": e.get("id"),
+            "title": e.get("title"),
+            "duration": duration_str,
+            "channel": {"name": e.get("uploader") or e.get("channel") or ""},
+            "descriptionSnippet": [{"text": e.get("description") or ""}],
+        })
+    return results
 
 def find_trailers_for_missing(
-    movies_data_path="movies-data.json",
+    movies_data_path="movies-data-sorted.json",
     update_file_path="trailers-update.ndjson",
     not_found_file_path=NOT_FOUND_NDJSON,
     recent_year_cutoff_years=RECENT_YEAR_CUTOFF_YEARS,
@@ -348,9 +482,9 @@ def find_trailers_for_missing(
             for q in ru_queries:
                 searched = True
                 print(f"   -> Поиск по (RU): '{q}'")
-                videos_search = VideosSearch(q, limit=8, region='RU')
-                results = videos_search.result()
-                for v in (results or {}).get('result', []):
+                proxy = os.environ.get("YT_PROXY") or None  # например: http://127.0.0.1:8080
+                results = youtube_search(q, limit=8, region="RU", proxy=proxy)
+                for v in results:
                     vid = v.get('id')
                     if vid and vid not in seen_ids:
                         candidate_results.append(v)
@@ -396,9 +530,9 @@ def find_trailers_for_missing(
             for q in en_queries:
                 searched = True
                 print(f"   -> Поиск по (EN): '{q}'")
-                videos_search = VideosSearch(q, limit=8, region='US')  # EN регион
-                results = videos_search.result()
-                for v in (results or {}).get('result', []):
+                proxy = os.environ.get("YT_PROXY") or None
+                results = youtube_search(q, limit=8, region="US", proxy=proxy)
+                for v in results:
                     vid = v.get('id')
                     if vid and vid not in seen_ids:
                         candidate_results.append(v)

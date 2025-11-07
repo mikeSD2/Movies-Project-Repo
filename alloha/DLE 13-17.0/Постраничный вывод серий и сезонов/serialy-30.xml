@@ -1,0 +1,1096 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dleplugin>
+	<name>Сериалы 3.0</name>
+	<description></description>
+	<icon></icon>
+	<version></version>
+	<dleversion></dleversion>
+	<versioncompare>less</versioncompare>
+	<upgradeurl></upgradeurl>
+	<filedelete>0</filedelete>
+	<needplugin></needplugin>
+	<mnotice>0</mnotice>
+	<mysqlinstall><![CDATA[CREATE TABLE `{prefix}_serials` (
+  `id` int(12) NOT NULL AUTO_INCREMENT,
+  `news_id` int(12) NOT NULL,
+  `season` int(5) NOT NULL,
+  `episode` int(5) NOT NULL,
+  `kadr` varchar(300) NOT NULL,
+  `title` varchar(300) NOT NULL,
+  `story` mediumtext NOT NULL,
+  `metadescr` varchar(800) NOT NULL,
+  `moder` tinyint(1) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `news_id_season_episode` (`news_id`,`season`,`episode`),
+  KEY `news_id_season` (`news_id`,`season`),
+  KEY `news_id` (`news_id`),
+  KEY `moder` (`moder`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+CREATE TABLE `{prefix}_seasons` (
+  `id` int(12) NOT NULL AUTO_INCREMENT,
+  `news_id` int(12) NOT NULL,
+  `season` int(5) NOT NULL,
+  `kadr` varchar(300) NOT NULL,
+  `title` varchar(300) NOT NULL,
+  `story` mediumtext NOT NULL,
+  `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `news_id_season` (`news_id`,`season`),
+  KEY `news_id` (`news_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT IGNORE INTO `{prefix}_admin_sections` (`name`, `title`, `descr`, `icon`, `allow_groups`) VALUES ('serialy', 'Модуль сериалы', 'Модуль сезоны и серии', '', '1');]]></mysqlinstall>
+	<mysqlupgrade><![CDATA[]]></mysqlupgrade>
+	<mysqlenable><![CDATA[]]></mysqlenable>
+	<mysqldisable><![CDATA[]]></mysqldisable>
+	<mysqldelete><![CDATA[]]></mysqldelete>
+	<phpinstall><![CDATA[]]></phpinstall>
+	<phpupgrade><![CDATA[]]></phpupgrade>
+	<phpenable><![CDATA[]]></phpenable>
+	<phpdisable><![CDATA[]]></phpdisable>
+	<phpdelete><![CDATA[]]></phpdelete>
+	<notice><![CDATA[]]></notice>
+	<file name="engine/inc/serialy.php">
+		<operation action="create">
+			<replacecode><![CDATA[<?php
+
+$doaction = !empty($_REQUEST['doaction']) && is_scalar($_REQUEST['doaction']) ? $_REQUEST['doaction'] : false;
+$news_id = intval($_GET['news_id']);
+
+function html_poster($s = '', $c = 'image-uploaded', $d = 'disabled="disabled"') {
+	return <<<HTML
+		<label class="sale-image {$c}" style="{$s}">
+			<input type="file" class="sale-inp-file" accept="image/*" {$d}>
+			<span class="fa fa-camera"></span>
+			<div class="del-img-2" data-id="{$id}"><span class="fa fa-trash"></span></div>
+		</label>
+HTML;
+}
+
+
+$db->query( "INSERT IGNORE INTO " . PREFIX . "_seasons
+        (news_id, season)
+SELECT news_id, season FROM " . PREFIX . "_serials" );
+
+if('edit_series' == $doaction)
+{
+	$full = <<<HTML
+	<form method="post" class="form-horizontal">
+	<div class="panel-body">
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Название серии:</label>
+		    <div class="col-sm-10">
+			    <input type="text" class="form-control width-500 position-left" name="title" id="title" value="{title}" maxlength="200">
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Описание:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:150px;" name="story">{story}</textarea>
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Meta description:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:100px;" name="metadescr">{metadescr}</textarea>
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="control-label col-sm-2">Изображение:</label>
+			<div id="mb-image" class="col-sm-10">
+				{html_poster}	
+			</div>
+		</div>			
+	</div>	
+	<div class="panel-footer">
+		<button type="submit" class="btn bg-teal btn-raised position-left legitRipple">Сохранить</button>
+	</div>
+	<input type="hidden" name="id" value="{id}">
+	<input type="hidden" name="action" value="save_series">
+	<input type="hidden" name="kadr" value="{kadr}" id="kadr">
+	</form>		    
+HTML;
+}
+
+if($news_id && 'add_series' == $doaction)
+{
+
+	$row = $db->super_query( "SELECT * FROM " . PREFIX . "_seasons WHERE news_id='{$news_id}' ORDER by season ASC", true );
+
+	if(empty($row))
+	{
+
+	$full = <<<HTML
+	<div class="panel-body">
+	Добавьте хотя бы один сезон к данной новости   
+	</div> 
+HTML;
+
+	} else {
+
+	$full = <<<HTML
+	<form method="post" class="form-horizontal">
+	<div class="panel-body">
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Номер сезона:</label>
+		    <div class="col-sm-10">
+			    <select name="season">{seasons_select}</select>
+			</div>
+		</div>
+
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Номер серии (цифра):</label>
+		    <div class="col-sm-10">
+			    <input type="number" class="form-control width-500 position-left" name="episode" id="episode" value="" maxlength="8">
+			</div>
+		</div>
+
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Название серии:</label>
+		    <div class="col-sm-10">
+			    <input type="text" class="form-control width-500 position-left" name="title" id="title" value="" maxlength="200">
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Описание:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:150px;" name="story"></textarea>
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Meta description:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:100px;" name="metadescr"></textarea>
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="control-label col-sm-2">Изображение:</label>
+			<div id="mb-image" class="col-sm-10">
+			{html_poster}
+			</div>
+		</div>			
+	</div>	
+	<div class="panel-footer">
+		<button type="submit" class="btn bg-teal btn-raised position-left legitRipple">Добавить</button>
+	</div>
+	<input type="hidden" name="action" value="add_series">
+	<input type="hidden" name="kadr" value="" id="kadr">
+	</form>		    
+HTML;
+
+	}
+
+
+}
+
+if($news_id && 'edit_seasons' == $doaction)
+{
+	$full = <<<HTML
+	<form method="post" class="form-horizontal">
+	<div class="panel-body">
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Название сезона:</label>
+		    <div class="col-sm-10">
+			    <input type="text" class="form-control width-500 position-left" name="title" id="title" value="{title}" maxlength="200">
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Описание:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:150px;" name="story">{story}</textarea>
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="control-label col-sm-2">Изображение:</label>
+			<div id="mb-image" class="col-sm-10">
+				{html_poster}	
+			</div>
+		</div>			
+	</div>	
+	<div class="panel-footer">
+		<button type="submit" class="btn bg-teal btn-raised position-left legitRipple">Сохранить</button>
+	</div>
+	<input type="hidden" name="id" value="{id}">
+	<input type="hidden" name="action" value="save_seasons">
+	<input type="hidden" name="kadr" value="{kadr}" id="kadr">
+	</form>		    
+HTML;
+}
+
+if($news_id &&'add_seasons' == $doaction)
+{
+	$full = <<<HTML
+	<form method="post" class="form-horizontal">
+	<div class="panel-body">
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Номер сезона (цифра):</label>
+		    <div class="col-sm-10">
+			    <input type="number" class="form-control width-500 position-left" name="season" id="season" value="{season}" maxlength="4">
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Название сезона:</label>
+		    <div class="col-sm-10">
+			    <input type="text" class="form-control width-500 position-left" name="title" id="title" value="{title}" maxlength="200">
+			</div>
+		</div>
+		<div class="form-group">
+		    <label class="control-label col-sm-2">Описание:</label>
+		    <div class="col-sm-10">
+			    <textarea class="classic" style="width:500px;height:150px;" name="story">{story}</textarea>
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="control-label col-sm-2">Изображение:</label>
+			<div id="mb-image" class="col-sm-10">
+			{html_poster}
+			</div>
+		</div>			
+	</div>	
+	<div class="panel-footer">
+		<button type="submit" class="btn bg-teal btn-raised position-left legitRipple">Добавить</button>
+	</div>
+	<input type="hidden" name="action" value="add_seasons">
+	<input type="hidden" name="kadr" value="" id="kadr">
+	</form>		    
+HTML;
+}
+
+
+
+$rowid   = intval($_GET['id']);
+
+
+$row = $db->super_query( "SELECT title FROM " . PREFIX . "_post WHERE id = '{$news_id}' " );
+
+$title_news = stripslashes($row['title']);
+
+
+if($_POST['action'] == 'save_series'){
+
+	$id = intval($_POST['id']);
+	include_once ENGINE_DIR . '/classes/parse.class.php';
+	$parse = new ParseFilter();
+	$title = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['title'] ) ) ) );
+	$story = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['story'] ) ) ) );
+	$metadescr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['metadescr'] ) ) ) );
+	$kadr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['kadr'] ) ) ) );
+
+	$db->query( "UPDATE " . PREFIX . "_serials SET title='{$title}', story='{$story}', metadescr='{$metadescr}', kadr='{$kadr}' WHERE id='{$id}'" );
+
+}
+
+if($_POST['action'] == 'add_series'){
+
+	include_once ENGINE_DIR . '/classes/parse.class.php';
+	$parse = new ParseFilter();
+	$season = ! empty($_POST['season']) && is_scalar($_POST['season']) ? (int)$_POST['season'] : null;
+	$episode = ! empty($_POST['episode']) && is_scalar($_POST['episode']) ? (int)$_POST['episode'] : null;
+	$title = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['title'] ) ) ) );
+	$story = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['story'] ) ) ) );
+	$metadescr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['metadescr'] ) ) ) );
+	$kadr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['kadr'] ) ) ) );
+
+	empty($title) && $title = '';
+	empty($story) && $story = '';
+	empty($metadescr) && $metadescr = '';
+	empty($kadr) && $kadr = '';
+
+	if(empty($news_id))
+	{
+		die('err news_id');
+	}
+
+	if(empty($episode))
+	{
+
+		$full .= "<div class='serials_save_error'>Ошибка добавления! Укажите номер серии</div>";
+
+	} else {
+
+		if(empty($season))
+		{
+
+			$full .= "<div class='serials_save_error'>Ошибка добавления! Укажите номер сезона</div>";
+
+		} else {
+
+			$rowSerial = $db->super_query( "SELECT 1 FROM " . PREFIX . "_serials WHERE `season` = '{$season}' AND `news_id` = '{$news_id}' AND `episode` = '{$episode}'" );
+
+			if(! empty($rowSerial))
+			{
+
+				$full .= "<div class='serials_save_error'>Ошибка добавления! Такие сезон/серия уже существуют</div>";
+
+			} else {
+
+				$db->query("INSERT INTO " . PREFIX . "_serials (`title`, `story`, `metadescr`, `kadr`, `season`, `news_id`, `episode`) VALUES
+					('" . $title . "', '" . $story . "', '" . $metadescr . "', '" . $kadr . "', " . $season . ", " . $news_id . ", " . $episode . ")");
+
+				$insertId = $db->insert_id();
+
+				header('Location: ?mod=serialy&doaction=edit_series&id=' . $insertId . '&news_id=' . $news_id, false, 301); exit();
+
+			}
+
+		}
+
+	}
+
+}
+
+
+if($_POST['action'] == 'save_seasons'){
+
+	$id = intval($_POST['id']);
+	include_once ENGINE_DIR . '/classes/parse.class.php';
+	$parse = new ParseFilter();
+	$title = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['title'] ) ) ) );
+	$story = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['story'] ) ) ) );
+	$metadescr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['metadescr'] ) ) ) );
+	$kadr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['kadr'] ) ) ) );
+
+	$db->query( "UPDATE " . PREFIX . "_seasons SET title='{$title}', story='{$story}', kadr='{$kadr}' WHERE id='{$id}'" );
+
+}
+
+if($_POST['action'] == 'add_seasons'){
+
+	include_once ENGINE_DIR . '/classes/parse.class.php';
+	$parse = new ParseFilter();
+	$title = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['title'] ) ) ) );
+	$story = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['story'] ) ) ) );
+	$kadr = $db->safesql( $parse->process(  trim( strip_tags ( $_POST['kadr'] ) ) ) );
+	$season = ! empty($_POST['season']) && is_scalar($_POST['season']) ? (int)$_POST['season'] : null;
+
+	empty($title) && $title = '';
+	empty($story) && $story = '';
+	empty($kadr) && $kadr = '';
+
+	if(empty($news_id))
+	{
+		die('err news_id');
+	}
+
+	if(empty($season))
+	{
+
+		$full .= "<div class='serials_save_error'>Ошибка добавления! Укажите номер сезона</div>";
+
+	} else {
+
+		$rowSeason = $db->super_query( "SELECT 1 FROM " . PREFIX . "_seasons WHERE `season` = '{$season}' AND `news_id` = '{$news_id}'" );
+
+		if(! empty($rowSeason))
+		{
+
+			$full .= "<div class='serials_save_error'>Ошибка добавления! Такой сезон уже существует</div>";
+
+		} else {
+
+			$db->query("INSERT INTO " . PREFIX . "_seasons (`title`, `story`, `kadr`, `season`, `news_id`) VALUES
+			('" . $title . "', '" . $story . "', '". $kadr . "', " . $season . ", " . $news_id . ")");
+
+			$insertId = $db->insert_id();
+
+			header('Location: ?mod=serialy&doaction=edit_seasons&id=' . $insertId . '&news_id=' . $news_id, false, 301); exit();
+
+		}
+
+	}
+
+}
+
+
+if($_POST['action'] == 'mass_delete'){
+
+	foreach ($_POST['selected_news'] as $id) {
+
+		$row = $db->super_query(" SELECT * FROM " . PREFIX . "_serials WHERE id='{$id}'");
+
+        if (is_file(ROOT_DIR . "/uploads/posts/".$row['kadr'])) {
+            @chmod(ROOT_DIR . "/uploads/posts/".$row['kadr'], 0666);
+		    @unlink(ROOT_DIR . "/uploads/posts/".$row['kadr']);
+        }
+
+		$db->query( "DELETE FROM " . PREFIX . "_serials WHERE id='{$id}'" );
+
+	}
+
+}
+
+
+
+
+
+if ($news_id && !$rowid) {
+	
+	$sql = $db->query ( "SELECT s.*, ss.id as season_id FROM " . PREFIX . "_serials s 
+		JOIN " . PREFIX . "_seasons ss ON (s.news_id = ss.news_id AND s.season = ss.season) 
+			WHERE s.news_id = '{$news_id}' ORDER BY s.season DESC, s.episode DESC" );
+
+	$serialsBySeasons = [];
+
+	while ($row = $db->get_row($sql)) {
+		$serialsBySeasons[$row['season']][] = $row;
+	}
+
+	$list = '';
+
+	if(! empty($serialsBySeasons))
+	{
+
+		foreach($serialsBySeasons as $seasonId => $serialsArr)
+		{
+
+			$list .= '<tr><td><a href="?mod=serialy&doaction=edit_seasons&id='.$seasonId.'&news_id='.$news_id.'">'.$seasonId.' сезон</a></td><td></td></tr>';
+
+			foreach ($serialsArr as $serialsRow) {
+				$list .= '<tr><td> - <a href="?mod=serialy&doaction=edit_series&id='.$serialsRow['id'].'&news_id='.$news_id.'">'.$serialsRow['episode'].' серия</a></td><td class="w50"><input name="selected_news[]" value="'.$serialsRow['id'].'" type="checkbox" class="icheck"></td></tr>';
+			}
+
+		}
+
+	}
+
+	if (!$list) {
+		$list = '<tr><td>пока ничего нет</td><td></td></tr>';
+	}
+
+	$maincontent = <<<HTML
+	<form action="" method="post" name="editnews">
+	<table class="table table-striped table-xs table-hover tbl-pad">
+		<tr>
+			<th>сезон / серия</th>
+		    <th class="w50"><input type="checkbox" name="master_box" title="Выбрать все" onclick="javascript:ckeck_uncheck_all();" class="icheck"></th>
+		</tr>
+	$list
+	</table>		
+	<div class="panel-footer">
+		<div class="pull-right">
+			<select name="action" class="uniform position-left">
+				<option value="">-- Действие --</option>
+				<option value="mass_delete">Удалить</option>
+			</select>
+			<input class="btn bg-teal btn-sm btn-raised" type="submit" value="Выполнить">
+		</div>
+	</div>
+	</form>
+HTML;	
+
+	$breadcrumb = $title_news;
+
+}
+
+
+
+if ($news_id && $rowid && 'edit_series' == $doaction) {
+	
+	$row = $db->super_query( "SELECT * FROM " . PREFIX . "_serials WHERE id='{$rowid}' " );
+
+	$kadr = false;
+
+	if(! empty($row['kadr']))
+	{
+		list($kadr) = explode('|', $row['kadr']);
+	}
+
+	if ($row['kadr']) {
+		$html_poster = html_poster('background-image: url(/uploads/posts/'.$kadr.')');
+	} else {
+		$html_poster = html_poster('', '', '');
+	}
+
+	$full = str_replace('{title}', stripslashes($row['title']), $full);
+	$full = str_replace('{story}', stripslashes($row['story']), $full);
+	$full = str_replace('{metadescr}', stripslashes($row['metadescr']), $full);
+	$full = str_replace('{kadr}', $row['kadr'], $full);
+	$full = str_replace('{id}', $row['id'], $full);
+	$full = str_replace('{html_poster}', $html_poster, $full);
+	$maincontent = $full;	
+
+	$breadcrumb = [
+		"?mod=serialy&news_id={$news_id}" => $title_news,
+		$row['season'].' сезон '.$row['episode'].' серия'
+	];
+
+}
+
+if ($news_id && 'add_series' == $doaction) {
+
+	$season = ! empty($_POST['season']) && is_scalar($_POST['season']) ? $_POST['season'] : '';
+	$episode = ! empty($_POST['episode']) && is_scalar($_POST['episode']) ? $_POST['episode'] : '';
+	$title = ! empty($_POST['title']) && is_scalar($_POST['title']) ? $_POST['title'] : '';
+	$story = ! empty($_POST['story']) && is_scalar($_POST['story']) ? $_POST['story'] : '';
+	$metadescr = ! empty($_POST['metadescr']) && is_scalar($_POST['metadescr']) ? $_POST['metadescr'] : '';
+
+	$full = str_replace('{season}', stripslashes($season), $full);
+	$full = str_replace('{episode}', stripslashes($episode), $full);
+	$full = str_replace('{title}', stripslashes($title), $full);
+	$full = str_replace('{story}', stripslashes($story), $full);
+	$full = str_replace('{metadescr}', stripslashes($metadescr), $full);
+
+	$row = $db->super_query( "SELECT * FROM " . PREFIX . "_seasons WHERE news_id='{$news_id}' ORDER by season ASC", true );
+
+	$seasonsOptionArr = [];
+
+	foreach($row as $oneRow)
+	{
+		$seasonsOptionArr[] = '<option value="' . $oneRow['season'] . '">Сезон ' . $oneRow['season'] . '</option>';
+	}
+
+	$full = str_replace('{seasons_select}', implode($seasonsOptionArr), $full);
+
+	$full = str_replace('{html_poster}', html_poster('', '', ''), $full);
+
+	$maincontent = $full;	
+
+	$breadcrumb = [
+		"?mod=serialy&news_id={$news_id}" => $title_news,
+		'Добавление серии'
+	];
+}
+
+if ($news_id && $rowid && 'edit_seasons' == $doaction) {
+
+	$row = $db->super_query( "SELECT * FROM " . PREFIX . "_seasons WHERE id='{$rowid}' " );
+
+	if(! empty($row['kadr']))
+	{
+		list($kadr) = explode('|', $row['kadr']);
+	}
+	
+	if ($row['kadr']) {
+		$html_poster = html_poster('background-image: url(/uploads/posts/'.$kadr.')');
+	} else {
+		$html_poster = html_poster('', '', '');
+	}
+
+	$full = str_replace('{title}', stripslashes($row['title']), $full);
+	$full = str_replace('{story}', stripslashes($row['story']), $full);
+	$full = str_replace('{kadr}', $row['kadr'], $full);
+	$full = str_replace('{id}', $row['id'], $full);
+	$full = str_replace('{html_poster}', $html_poster, $full);
+	$maincontent = $full;	
+
+	$breadcrumb = [
+		"?mod=serialy&news_id={$news_id}" => $title_news,
+		$row['season'].' сезон '
+	];
+
+}
+
+if ($news_id && 'add_seasons' == $doaction) {
+
+	$season = ! empty($_POST['season']) && is_scalar($_POST['season']) ? $_POST['season'] : '';
+	$title = ! empty($_POST['title']) && is_scalar($_POST['title']) ? $_POST['title'] : '';
+	$story = ! empty($_POST['story']) && is_scalar($_POST['story']) ? $_POST['story'] : '';
+
+	$full = str_replace('{season}', stripslashes($season), $full);
+	$full = str_replace('{title}', stripslashes($title), $full);
+	$full = str_replace('{story}', stripslashes($story), $full);
+	$full = str_replace('{html_poster}', html_poster('', '', ''), $full);
+
+	$maincontent = $full;	
+
+	$breadcrumb = [
+		"?mod=serialy&news_id={$news_id}" => $title_news,
+		'Добавление сезона'
+	];
+}
+
+echoheader( "<i class=\"fa fa-search position-left\"></i><span class=\"text-semibold\">Модуль сезоны и серии</span>", $breadcrumb );
+
+
+
+
+
+ 
+
+echo <<<HTML
+<style>
+.serials_save_error {
+	padding: 20px;
+    color: #fff;
+    background: #e16666;
+    border: 4px solid #fff;
+}
+.sale-image {
+    background-color: rgba(197, 208, 198, 0.3);
+    background-image: url(/uploads/selections/animation.gif);
+    background-position: -100px center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: block;
+    height: 120px;
+    position: relative;
+    text-align: center;
+    width: 200px;
+}
+.sale-image .sale-inp-file {
+    left: -999px;
+    position: absolute;
+}
+.sale-image .fa-camera {
+    color: #bbb;
+    font-size: 30px;
+    margin: 42px 0 0;
+}
+.sale-image.image-uploaded {
+    background-position: center center;
+    background-size: cover;
+}
+.sale-image.image-loading .fa-camera {
+    display: none;
+}
+.sale-image.image-loading {
+    background-position: center center;
+}
+.image-uploaded .fa-camera {
+    display: none;
+}
+.sale-image.image-uploaded .del-img-2 {
+    opacity: 0;
+}
+.sale-image.image-uploaded:hover .del-img-2 {
+    display: block;
+    filter: none;
+    opacity: 1;
+    transform: scale(1);
+}
+.del-img-2 {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    bottom: 0;
+    font-size: 24px;
+    height: 50px;
+    left: 0;
+    line-height: 45px;
+    margin: auto;
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    top: 0;
+    transform: scale(0);
+    transition: all 0.2s ease 0s;
+    width: 50px;
+}
+.w50 {
+    width: 50px;
+}
+</style>
+<div class="panel panel-default">
+    <div class="panel-heading">
+    <ul class="nav nav-tabs nav-tabs-solid">
+      <li class="active"><a href="#maintab">Главная</a></li>
+      <li><a href="?mod=admitad&action=config">Настройки</a></li>
+      <li><a href="?mod=serialy&doaction=add_seasons&news_id={$news_id}">Добавить новый сезон</a></li>
+      <li><a href="?mod=serialy&doaction=add_series&news_id={$news_id}">Добавить новую серию</a></li>
+    </ul>
+    </div>
+	$maincontent
+</div>
+$pagination
+<script>
+$(function(){
+	$(document).on('click','.del-img-2',function(){
+	    var t = $(this), p = $(this).parent('.sale-image'), images = $('#kadr').val();
+	    $.post("/engine/ajax/controller.php?mod=upload", {
+	    	news_id: "{$news_id}",
+	    	subaction: "deluploads",
+	    	author: "{$member_id['name']}",
+	    	user_hash: "{$dle_login_hash}",
+	    	images: [images]
+	    }, function(d){
+	        p.removeClass('image-uploaded').removeAttr('style').find('input').removeAttr('disabled');
+	    });
+	})
+	.on('change','.sale-inp-file',function(){
+	    var t = $(this), id = t.data('id'), p = $(this).parent();
+	    var qqfile = t[0].files[0]['name'];
+	    t.attr('disabled','disabled'); 
+	    p.addClass('image-loading');
+	    var formData = new FormData();
+	    formData.append('qqfile', t[0].files[0]);
+	    $.ajax({
+	        url: "/engine/ajax/controller.php?mod=upload&subaction=upload&area=xfieldsimage&news_id={$news_id}&xfname=kadr&author={$member_id['name']}&user_hash={$dle_login_hash}",
+	        type: "POST",
+	        contentType: false, 
+	        processData: false,
+	        dataType: 'json',
+	        data: formData,
+	        success: function(d){
+	            p.removeClass('image-loading');
+	            if(d.error){
+	                t.removeAttr('disabled');
+	                DLEalert ( d.error, 'Ошибка' );
+	            } 
+	            if(d.success) {
+	                p.find('.del-img-2').attr("data-id", d.id);
+	                p.addClass('image-uploaded');
+	                p.css({'background-image':'url('+d.link+')'});
+	                $('#kadr').val(d.xfvalue);
+	            }
+
+	        }        
+	    }); 
+	})
+});
+function ckeck_uncheck_all() {
+
+    var frm = document.editnews;
+    for (var i=0;i<frm.elements.length;i++) {
+        var elmnt = frm.elements[i];
+        if (elmnt.type=='checkbox') {
+            if(frm.master_box.checked == true){ elmnt.checked=false; $(elmnt).parents('tr').removeClass('warning'); }
+            else{ elmnt.checked=true; $(elmnt).parents('tr').addClass('warning'); }
+        }
+    }
+    if(frm.master_box.checked == true){ frm.master_box.checked = false; }
+    else{ frm.master_box.checked = true; }
+	
+	$(frm.master_box).parents('tr').removeClass('warning');
+	
+	$.uniform.update();
+}
+</script>
+
+HTML;
+
+
+
+echofooter();
+
+
+?>]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/engine.php">
+		<operation action="replace">
+			<searchcode><![CDATA[if (intval($category_id)){]]></searchcode>
+			<replacecode><![CDATA[	if (defined('SEASON') && SEASON) {
+
+		$s_navigation .= "{$config['speedbar_separator']}<span itemprop=\"itemListElement\" itemscope itemtype=\"https://schema.org/ListItem\"><meta itemprop=\"position\" content=\"2\"><a href=\"" . $full_link . "\" itemprop=\"item\"><span itemprop=\"name\">" . TITLE . "</span></a></span>{$config['speedbar_separator']}";
+		
+		$full_link = preg_replace('#\.html$#', '', $full_link);
+		
+		$titl_e = '';
+
+		if (defined('EPISODE') && EPISODE) {
+			$s_navigation .= '<span itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><meta itemprop="position" content="3"><a href="'.$full_link.'/'.SEASON.'-season.html" itemprop="item"><span itemprop="name">'.SEASON.' сезон</span></a></span>'.$config['speedbar_separator'].EPISODE.' серия';
+		}
+		else {
+			$s_navigation .= SEASON." сезон";
+		}
+
+	}
+
+
+
+
+
+	elseif (intval($category_id)){]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/modules/show.full.php">
+		<operation action="before">
+			<searchcode><![CDATA[define( 'NEWS_ID', $row['id'] );]]></searchcode>
+			<replacecode><![CDATA[$season = intval($_GET['season']);
+$episode = intval($_GET['episode']);
+
+define( 'SEASON', $season);
+define( 'EPISODE', $episode);
+define( 'TITLE', stripslashes($row['title']));]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="before">
+			<searchcode><![CDATA[else $tpl->load_template( 'fullstory.tpl' );]]></searchcode>
+			<replacecode><![CDATA[elseif ($season && $episode) {
+    $tpl->load_template('serialy/episode.tpl');
+}
+elseif ($season) $tpl->load_template('serialy/season.tpl');]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="after">
+			<searchcode><![CDATA[$tpl->compile( 'content', true, false );]]></searchcode>
+			<replacecode><![CDATA[		# ==== serialy start ==== #
+
+		$tpl->result['content'] = str_replace('{season}', $season, $tpl->result['content']);
+		$tpl->result['content'] = str_replace('{episode}', $episode, $tpl->result['content']);
+
+$tpl->result['content'] = str_replace('{story}', $season_story, $tpl->result['content']);
+
+		include_once (ENGINE_DIR . '/modules/serialy/func.php');
+
+        $tpl->result['content'] = str_replace('{first-episode-link}', str_replace('.html', '/', $full_link).'1-season-1-episode.html', $tpl->result['content']);
+		
+		if (stripos ( $tpl->result['content'], "{serialy" ) !== false) {
+			$tpl->result['content'] = preg_replace_callback ( "#\\{serialy(.+?)\\}#i", "custom_series", $tpl->result['content']);
+		}
+
+
+		if (stripos ( $tpl->result['content'], "{season=" ) !== false) {
+			$tpl->result['content'] = preg_replace_callback ( "#\\{season=(.*?)\\}#i", "custom_season", $tpl->result['content']);
+		}
+
+		if (defined('NOTFOUND')) {
+			$tpl->result['content'] = '';
+			return;
+		}
+
+		# ==== serialy end ==== #]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="before">
+			<searchcode><![CDATA[$news_seiten = explode( "{PAGEBREAK}", $row['full_story'] );]]></searchcode>
+			<replacecode><![CDATA[if ($season) {
+    $serial_link = preg_replace('#\.html$#', '', $full_link);
+    $canonical = $serial_link.'/'.$season.'-season.html';
+}
+if ($season && $episode) {
+    include (ENGINE_DIR . '/modules/serialy/episode.php');
+}
+
+if ($season && !$episode) {
+    include (ENGINE_DIR . '/modules/serialy/season.php');
+}
+]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/inc/editnews.php">
+		<operation action="before">
+			<searchcode><![CDATA[if( $row['allow_main'] ) $ifmain = "checked"; else $ifmain = "";]]></searchcode>
+			<replacecode><![CDATA[$author_info .= ' <a href="?mod=serialy&news_id='.$id.'">все серии</a>';]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/inc/include/functions.inc.php">
+		<operation action="before">
+			<searchcode><![CDATA[$db->query( "DELETE FROM " . PREFIX . "_post WHERE id='{$id}'" );]]></searchcode>
+			<replacecode><![CDATA[$db->query( "DELETE FROM " . PREFIX . "_serials WHERE news_id='{$id}'" );]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/modules/main.php">
+		<operation action="before">
+			<searchcode><![CDATA[echo $tpl->result['main'];]]></searchcode>
+			<replacecode><![CDATA[if (stripos ( $tpl->result['main'], "{serialy" ) !== false) {
+	include_once (ENGINE_DIR . '/modules/serialy/func.php');
+	$tpl->result['main'] = preg_replace_callback ( "#\\{serialy(.+?)\\}#i", "custom_series", $tpl->result['main']);
+}]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/classes/google.class.php">
+		<operation action="after">
+			<searchcode><![CDATA[$this->generate_news();]]></searchcode>
+			<replacecode><![CDATA[$this->generate_seasones();
+$this->generate_episodes();]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="before">
+			<searchcode><![CDATA[	function generate_news() {]]></searchcode>
+			<replacecode><![CDATA[	
+	function get_full_link($row) {
+
+		global $config;
+
+		if( intval( $row['category'] ) and $config['seo_type'] == 2 ) {
+			$full_link = $config['http_home_url'] . get_url( intval( $row['category'] ) ) . "/" . $row['id'] . "-" . $row['alt_name'] . "/";
+		} else {
+			$full_link = $config['http_home_url'] . $row['id'] . "-" . $row['alt_name'] . "/";
+		}
+
+		return $full_link;
+	}
+
+
+	function generate_episodes() {
+		
+		global $db, $config;
+
+		$row = $db->super_query( "SELECT COUNT(*) as count FROM " . PREFIX . "_serials" );
+
+        $this->limit = $row['count'];
+        
+		if ( $this->limit > $this->news_per_file ) {
+		
+			$pages_count = @ceil( $row['count'] / $this->news_per_file );
+			
+			$n = 0;
+		
+			for ($i =0; $i < $pages_count; $i++) {
+		
+				$n = $n+1;
+		
+				$this->get_episodes($n);
+		
+			}
+		
+		} else {
+		
+			$this->get_episodes();
+		
+		}
+	}
+
+	function generate_seasones() {
+		
+		global $db, $config;
+
+		$db->super_query( "SELECT SQL_CALC_FOUND_ROWS id FROM " . PREFIX . "_serials GROUP BY news_id, season" );
+
+		$row = $db->super_query("SELECT FOUND_ROWS() as count");
+
+        $this->limit = $row['count'];
+
+		if ( $this->limit > $this->news_per_file ) {
+		
+			$pages_count = @ceil( $row['count'] / $this->news_per_file );
+			
+			$n = 0;
+		
+			for ($i =0; $i < $pages_count; $i++) {
+		
+				$n = $n+1;
+		
+				$this->get_seasones($n);
+		
+			}
+		
+		
+		} else {
+		
+			$this->get_seasones();
+		
+		}
+	}
+
+
+
+    function get_episodes( $page = false ) {
+		
+		global $db, $config;
+		
+		$this->priority = $this->news_priority;
+		$this->changefreq = $this->news_changefreq;
+		$prefix_page = '';
+		
+		if ( $page ) {
+			
+			if( $page != 1 ) $prefix_page = $page;
+
+			$page = $page - 1;
+			$page = $page * $this->news_per_file;
+			$this->limit = " LIMIT {$page}, {$this->news_per_file}";
+
+		} else {
+
+			if( $this->limit < 1 ) $this->limit = false;
+			
+			if( $this->limit ) {
+				
+				$this->limit = " LIMIT 0," . $this->limit;
+			
+			} else {
+				
+				$this->limit = "";
+			
+			}
+		}
+
+		$this->db_result = $db->query("SELECT s.season, s.episode, p.id, p.title, p.date, p.category, p.alt_name FROM " . PREFIX . "_serials s LEFT JOIN " . PREFIX . "_post p ON(s.news_id=p.id)" . $this->limit );
+		
+		$this->sitemap->links("episodes_pages{$prefix_page}.xml", function($map) {
+			
+			global $db, $config;
+
+			$k = 1;
+			
+			while ( $row = $db->get_row( $this->db_result ) ) {
+				
+				$date = time()-$k;
+				
+				$loc = $this->get_full_link($row);
+				
+				$loc .= $row['season'].'-season-'.$row['episode'].'-episode.html';
+			
+				$map->loc($loc)->freq($this->changefreq)->lastMod( date('c', $date ) )->priority( $this->priority );
+
+				$k+=2;
+				
+			}
+			
+		});
+		
+
+	}
+
+
+    function get_seasones( $page = false ) {
+		
+		global $db, $config;
+		
+		$this->priority = $this->news_priority;
+		$this->changefreq = $this->news_changefreq;
+		$prefix_page = '';
+		
+		if ( $page ) {
+			
+			if( $page != 1 ) $prefix_page = $page;
+
+			$page = $page - 1;
+			$page = $page * $this->news_per_file;
+			$this->limit = " LIMIT {$page}, {$this->news_per_file}";
+
+		} else {
+
+			if( $this->limit < 1 ) $this->limit = false;
+			
+			if( $this->limit ) {
+				
+				$this->limit = " LIMIT 0," . $this->limit;
+			
+			} else {
+				
+				$this->limit = "";
+			
+			}
+		}
+
+		$this->db_result = $db->query("SELECT s.season, p.id, p.title, p.date, p.category, p.alt_name FROM " . PREFIX . "_serials s LEFT JOIN " . PREFIX . "_post p ON(s.news_id=p.id) GROUP BY s.news_id, s.season" . $this->limit );
+		
+		$this->sitemap->links("seasones_pages{$prefix_page}.xml", function($map) {
+			
+			global $db, $config;
+
+			$k = 1;
+			
+			while ( $row = $db->get_row( $this->db_result ) ) {
+				
+				$date = time()-$k;
+				
+				$loc = $this->get_full_link($row);
+
+				$loc .= $row['season'].'-season.html';
+			
+				$map->loc($loc)->freq($this->changefreq)->lastMod( date('c', $date ) )->priority( $this->priority );
+
+				$k+=2;
+				
+			}
+			
+		});
+		
+
+	}
+]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+</dleplugin>

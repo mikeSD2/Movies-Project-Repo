@@ -1,0 +1,15 @@
+movies-data-without-pop-pretty-updated.json - файлик со всеми данными.
+movies-data-sorted.json - отсортированный фалик по популярности из которого данные берем по 50.
+для сбора 800 записаей с нижним порогом популярности 5 такое вот комманда - python select_top_per_category.py -i ".\movies-data-without-pop-pretty-updated.json" -o ".\movies-data.json" -n 200 --min-popularity 70 --recent-years 1 --min-pop-floor 5
+переписать описания (где нет описание там гугляться описания там все настроено) - python rewrite_descriptions_with_gemini.py
+опубликовать переписанное - apply_rewrites_to_movies_json.py
+с помощью sort_movies.py отсортировать повторно можно базу movies-data-without-pop-pretty-updated.json по популярности там в отдельный фалик выноситься movies-sorted.json.
+add_random_prefix_to_ids.py - изменить url чтобы добавить в начало цифры или перегенерить существующие цифры не трограя года в названии и цифры в начале которые часть названия 
+(не уверен какой из скриптов добавил nokp в id возможно верхний но в самом исходном movies.json его не было)
+картинки меняем название скрипт тоже есть гдето поискать нужно в списке в текущей папке.
+append_movies_batch.py - добавление 50 сверху вниз которыз нету в movies-data.
+для обновления бытых url в related после смены ссылок или перед запуском сайта - build_related_map.py
+от смены url последствий не будет так ак related обновляеться по запуску соотв скрипта а при добавлении 50 новых там проверкка не только по id. с трейлерами тоже нету проблем так как там хоть в not-found ndjson и добавляеться тот же самый фильм с другим id но это ни на что не влияет.
+manage_movies.py - удалить фильм из бд при этом он сохраниться в removed json и сменить ссылку в базе
+python manage_movies.py delete 7398553-gachiakuta
+python manage_movies.py update-id 7398553-gachiakuta 7398553-new-slug 

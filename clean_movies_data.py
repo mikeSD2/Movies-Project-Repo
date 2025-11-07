@@ -48,7 +48,7 @@ def clean_movies_data(json_file_path):
             })
             continue
 
-        # Нормализуем путь вида 'uploads/posts/2025-06/xxx.webp'
+        # Нормализуем путь вида 'uploads/media/2025-06/xxx.webp'
         rel = image_path.lstrip('/\\')
         full_path = os.path.normpath(os.path.join(project_root, rel))
 

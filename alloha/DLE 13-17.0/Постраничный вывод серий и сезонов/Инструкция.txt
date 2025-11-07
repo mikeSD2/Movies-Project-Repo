@@ -1,0 +1,136 @@
+﻿
+Внимание:
+
+для обновления до версии 3.0 сделайте запрос к БД:
+
+ALTER TABLE dle_serials ADD COLUMN `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+
+Для DLE 15+
+
+в файле  engine/classes/parse.class.php добавить строчку
+
+require_once (DLEPlugins::Check(ENGINE_DIR . '/classes/htmlpurifier/HTMLPurifier.standalone.php'));
+
+перед 
+
+class ParseFilter {
+
+
+1. Закинуть tpl файлы из папки templates - в шаблон Вашего сайта
+
+2. Открываем .htaccess в корне сайта, ищем в нем код
+
+ДЛЯ АПАЧ:
+
+RewriteEngine On
+
+ниже вставляем:
+
+RewriteRule ^([^.]+)/([0-9]+)-(.*)/([0-9]+)-season.html$ index.php?newsid=$2&seourl=$3&seocat=$1&season=$4 [L]
+RewriteRule ^([^.]+)/([0-9]+)-(.*)/([0-9]+)-season-([0-9]+)-episode.html$ index.php?newsid=$2&seourl=$3&seocat=$1&season=$4&episode=$5 [L]
+
+RewriteRule ^([0-9]+)-(.*)/([0-9]+)-season.html$ index.php?newsid=$1&seourl=$2&season=$3 [L]
+RewriteRule ^([0-9]+)-(.*)/([0-9]+)-season-([0-9]+)-episode.html$ index.php?newsid=$1&seourl=$2&season=$3&episode=$4 [L]
+
+ДЛЯ NGNIX - в конфиг NGNIX:
+
+rewrite "^/([^.]+)/([0-9]+)-(.*)/([0-9]+)-season.html$" /index.php?newsid=$2&seourl=$3&seocat=$1&season=$4 last;
+rewrite "^/([^.]+)/([0-9]+)-(.*)/([0-9]+)-season-([0-9]+)-episode.html$" /index.php?newsid=$2&seourl=$3&seocat=$1&season=$4&episode=$5 last;
+
+rewrite "^/([0-9]+)-(.*)/([0-9]+)-season.html$" /index.php?newsid=$1&seourl=$2&season=$3 last;
+rewrite "^/([0-9]+)-(.*)/([0-9]+)-season-([0-9]+)-episode.html$" /index.php?newsid=$1&seourl=$2&season=$3&episode=$4 last;
+
+3. Закинуть папку engine в корень сайта
+
+4. Установить плагин serialy.xml
+
+5. Установить плагин fullstory-metatags-by-sander.xml
+
+6. Создаем доп поле "kadr", тип поля загруж. изображение
+
+7. Открываем fullstory.tpl ,
+
+выводим в нём следующие теги,
+
+над плеером:
+
+{season=[xfvalue_last_season]} - для вывода ссылок на все сезоны сериала, где [xfvalue_last_season] - это доп. поле с последним сезоном
+
+под плеер:
+
+{serialy news-id="{news-id}" season="[xfvalue_last_season]" sort="descr"} - где [xfvalue_last_season] - это доп. поле с последним сезоном
+
+7. Открываем Ваш шаблон/serialy/episode.tpl, копируем сюда содержимое вашего fullstory.tpl и выводим сверху тег:
+
+[metatags]
+<title>{title} {season} сезон {episode} серия смотреть онлайн</title>
+<description>Описание страницы</description>
+[/metatags]
+
+И подставляем параметры вывода плеера в сам плеер iframe:
+
+&season={season}&episode={episode} 
+
+пример:
+
+<iframe width="560" height="400" src="[xfvalue_iframe_url]&season={season}&episode={episode}" frameborder="0" allowfullscreen></iframe>
+
+- где [xfvalue_iframe_url] - это доп. поле с плеером
+
+8. Настраиваем вид серий - series.tpl и сезонов - season.tpl
+
+*Настройки SEO для эпизодов, описаний серий и тд - прямо в новостях, см. скриншот: https://i.postimg.cc/gJ4QJmh0/admin-25-1.png
+_____________________________
+
+ВСЕ ТЕГИ МОДУЛЯ ДЛЯ ШАБЛОНА САЙТА:
+
+{season} - сезон 
+
+{episode} - серия
+
+[active][/active] - тег для подсветки текущего эпизода, который просматривает пользователь (в сезонах есть по умолчанию)
+
+{episode-title} - название эпизода
+
+{seasone-title}  - название сезона
+
+{news-title} - название сериала
+
+{kadr} - постер серии/сезона *для работы тега нужно создать доп поле "kadr", тип поля "загружаемое изображение"
+
+{story} - описание эпизода/сезона
+
+[prev-episode]{prev-episode} серия[/prev-episode] - ссылка на предыдущий эпизод, внутри сезона
+
+[next-episode]{next-episode} серия[/next-episode] - ссылка на следующий эпизод, внутри сезона
+
+{season=[xfvalue_last_season]}  - тег для вывода ссылок на все сезоны сериала, где [xfvalue_last_season] - это доп. поле с последним сезоном, для fullstory.tpl
+
+{serialy news-id="{news-id}" season="{season}" sort="asc" template="abc"} - выведет все эпизоды внутри просматриваемого сезона
+
+{serialy news-id="{news-id}" season="[xfvalue_last_season]" sort="asc"}  - для вывода серий из последнего сезона
+
+{serialy sort="id" order="desc" limit="5" template="abc"} - выведет последние пять добавленных на сайт эпизодов, например, на главной странице в main.tpl
+
+{serialy sort="date" order="desc" limit="5" template="abc"} - выведет последние пять добавленных на сайт эпизодов, с сортировкой по дате
+
+принимаемые значения:
+
+order= asc, desc
+
+sort= date, id
+
+{first-episode-link} - ссылка на первый эпизод первого сезона. используется внутри <a href="{first-episode-link}">Смотреть с первой серии</a>
+
+____________________________
+
+Примеры оформления:
+ 
+1. https://i.postimg.cc/nLvT5CWj/screenshot-29aug2021-21-04-48.png
+
+2. https://i.postimg.cc/nzqHfLn0/screenshot-21jan2023-18-10-15.png
+
+3. https://i.postimg.cc/gjgWf3sN/admin-30.png
+
+В модуле то есть нет конкретной привязки к виду оформления, - можно подогнать под любой шаблон. модуль не привязан ни к одному дизайну, можно оформить вывод сезонов и серий постраничных - как угодно.

@@ -114,7 +114,7 @@ def rate_page():
         # Теперь ищем по классам, а не по data-id
         like_spans = soup.find_all('span', class_='page-likes-count')
         dislike_spans = soup.find_all('span', class_='page-dislikes-count')
-        score_div = soup.find('div', class_='content-page__ratingscore-ring')
+        score_div = soup.find('div', class_='contpage__ratingscore-ring')
 
         if not like_spans or not dislike_spans:
             return jsonify(success=False, message="Rating spans not found"), 404
@@ -202,29 +202,29 @@ def add_comment():
     new_comment_html = f'''
 <li class="comments-tree-item" style="list-style: none;">
 <div id="comment-{comment_id}" class="comm js-comm">
-  <div class="comment__header d-flex ai-center c-gap-10">
-    <div class="comment__img img-block ratio-1-1 js-comm-avatar">
-      <img src="/assets/lordfilm-website/siteimages/noavatar.png" alt="{name}" loading="lazy">
-      <div class="comment__letter d-flex jc-center ai-center" style="background-color:#95a5a6">{first_letter}</div>
+  <div class="coment__header d-flex ai-center c-gap-10">
+    <div class="coment__img img-block ratio-1-1 js-comm-avatar">
+      <img src="/assets/ProsmotrZone_site/otherimages/noavatar.png" alt="{name}" loading="lazy">
+      <div class="coment__letter d-flex jc-center ai-center" style="background-color:#95a5a6">{first_letter}</div>
     </div>
-    <div class="comment__meta flex-1 d-flex ai-center c-gap-20">
-      <div class="comment__author js-comm-author d-flex ai-center c-gap-10">
+    <div class="coment__meta flex-1 d-flex ai-center c-gap-20">
+      <div class="coment__author js-comm-author d-flex ai-center c-gap-10">
         <span>{name}</span>
       </div>
-      <div class="comment__date ws-nowrap">{now}</div>
+      <div class="coment__date ws-nowrap">{now}</div>
     </div>
-    <div class="comment__rating d-flex ai-center c-gap-10" data-comment-id="{comment_id}">
+    <div class="coment__rating d-flex ai-center c-gap-10" data-comment-id="{comment_id}">
       <a href="#" class="vote-btn" data-vote="like"><span class="fal fa-thumbs-up"></span></a>
       <span class="ratingtypeplusminus">0</span>
       <a href="#" class="vote-btn" data-vote="dislike"><span class="fal fa-thumbs-down"></span></a>
     </div>
   </div>
-  <div class="comment__text rich-text clearfix">
+  <div class="coment__text richtxt clearfix">
     <div>{comment_text}</div>
   </div>
-  <div class="comment__footer d-flex ai-center r-gap-10 c-gap-10">
-    <ul class="comment__action d-flex ai-center c-gap-20">
-      <li class="comment__action-reply d-flex ai-center c-gap-5 fal fa-chevron-down"><a href="#">Ответить</a></li>
+  <div class="coment__footer d-flex ai-center r-gap-10 c-gap-10">
+    <ul class="coment__action d-flex ai-center c-gap-20">
+      <li class="coment__action-reply d-flex ai-center c-gap-5 fal fa-chevron-down"><a href="#">Ответить</a></li>
     </ul>
   </div>
 </div>
@@ -253,15 +253,15 @@ def add_comment():
         
         children_container.append(li_element)
     else:
-        comments_container = soup.find(id='content-page__comments-list')
+        comments_container = soup.find(id='contpage__comments-list')
         if not comments_container:
             return "Comment block not found", 500
         no_comments_message = comments_container.find_previous_sibling('div', class_='message-info')
         if no_comments_message:
             no_comments_message.decompose()
             current_classes = comments_container.get('class', [])
-            if 'content-page__comments-list--not-comments' in current_classes:
-                current_classes.remove('content-page__comments-list--not-comments')
+            if 'contpage__comments-list--not-comments' in current_classes:
+                current_classes.remove('contpage__comments-list--not-comments')
                 comments_container['class'] = current_classes
 
         comments_container.append(li_element)
@@ -269,7 +269,7 @@ def add_comment():
     all_comments = soup.find_all('li', class_='comments-tree-item')
     comments_count = len(all_comments)
     
-    title_div = soup.find('div', class_='section__title')
+    title_div = soup.find('div', class_='sect___title')
     if title_div:
         title_div.string = f"Комментарии ({comments_count})"
 

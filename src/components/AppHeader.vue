@@ -1,104 +1,105 @@
 <template>
   <header class="header d-flex ai-center r-gap-10 c-gap-10 anim" id="header">
-    <router-link to="/" class="navbar__logo logo">
-      Lord<span>Film</span>
+    <router-link to="/" class="nav-bar___logo logo">
+      Prosmotr<span>Zone</span>
     </router-link>
     
-    <ul class="navbar__nav d-flex c-gap-20 js-this-in-mobile-menu">
+    <ul class="nav-bar___nav d-flex c-gap-20 js-this-in-mobile-menu">
       <li>
         <a href="#" @click.prevent>Фильмы</a>
-        <div class="navbar__nav-hidden anim">
-          <ul class="navbar__nav-hidden-col">
+        <div class="nav-bar___nav-hidden anim">
+          <ul class="nav-bar___nav-hidden-col">
             <li><router-link to="/filmy">Все</router-link></li>
             <li>По году:</li>
             <li><router-link to="/filmy?year=2025">2025</router-link></li>
             <li><router-link to="/filmy?year=2024">2024</router-link></li>
             <li><router-link to="/filmy?year=2023">2023</router-link></li>
           </ul>
-          <ul class="navbar__nav-hidden-col">
+          <ul class="nav-bar___nav-hidden-col">
             <li>По жанрам:</li>
             <li><router-link to="/filmy?genre=Биография">Биографические</router-link></li>
-            <li><router-link to="/filmy?genre=Боевик">Боевики</router-link></li>
             <li><router-link to="/filmy?genre=Вестерн">Вестерны</router-link></li>
             <li><router-link to="/filmy?genre=Военный">Военные</router-link></li>
+            <li><router-link to="/filmy?genre=Боевик">Боевики</router-link></li>
+            <li><router-link to="/filmy?genre=Драма">Драмы</router-link></li>
+            <li><router-link to="/filmy?genre=История">Исторические</router-link></li>
             <li><router-link to="/filmy?genre=Документальный">Документальные</router-link></li>
             <li><router-link to="/filmy?genre=Детектив">Детективы</router-link></li>
             <li><router-link to="/filmy?genre=Семейный">Детские</router-link></li>
-            <li><router-link to="/filmy?genre=Драма">Драмы</router-link></li>
-            <li><router-link to="/filmy?genre=История">Исторические</router-link></li>
             <li><router-link to="/filmy?genre=Комедия">Комедии</router-link></li>
           </ul>
-          <ul class="navbar__nav-hidden-col">
+          <ul class="nav-bar___nav-hidden-col">
+            <li><router-link to="/filmy?genre=Фэнтези">Фэнтези</router-link></li>
             <li><router-link to="/filmy?genre=Криминал">Криминал</router-link></li>
-            <li><router-link to="/filmy?genre=Мелодрама">Мелодрамы</router-link></li>
-            <li><router-link to="/filmy?genre=Приключения">Приключения</router-link></li>
-            <li><router-link to="/filmy?genre=Семейный">Семейные</router-link></li>
             <li><router-link to="/filmy?genre=Спорт">Спорт</router-link></li>
             <li><router-link to="/filmy?genre=Триллер">Триллеры</router-link></li>
-            <li><router-link to="/filmy?genre=Ужасы">Ужасы</router-link></li>
+            <li><router-link to="/filmy?genre=Мелодрама">Мелодрамы</router-link></li>
+            <li><router-link to="/filmy?genre=Приключения">Приключения</router-link></li>
             <li><router-link to="/filmy?genre=Фантастика">Фантастика</router-link></li>
-            <li><router-link to="/filmy?genre=Фэнтези">Фэнтези</router-link></li>
+            <li><router-link to="/filmy?genre=Семейный">Семейные</router-link></li>
+            <li><router-link to="/filmy?genre=Ужасы">Ужасы</router-link></li>
           </ul>
         </div>
       </li>
       
       <li>
         <a href="#" @click.prevent>Сериалы</a>
-        <div class="navbar__nav-hidden anim">
-          <ul class="navbar__nav-hidden-col">
+        <div class="nav-bar___nav-hidden anim">
+          <ul class="nav-bar___nav-hidden-col">
             <li><router-link to="/serialy">Все</router-link></li>
             <li>По году:</li>
             <li><router-link to="/serialy?year=2025">2025</router-link></li>
             <li><router-link to="/serialy?year=2024">2024</router-link></li>
             <li><router-link to="/serialy?year=2023">2023</router-link></li>
           </ul>
-          <ul class="navbar__nav-hidden-col">
+          <ul class="nav-bar___nav-hidden-col">
             <li>По жанрам:</li>
-            <li><router-link to="/serialy?special=doramas">Дорамы</router-link></li>
             <li><router-link to="/serialy?special=turkish">Турецкие сериалы</router-link></li>
+            <li><router-link to="/serialy?special=doramas">Дорамы</router-link></li>
             <li><router-link to="/serialy?genre=Биография">Биография</router-link></li>
-            <li><router-link to="/serialy?genre=Боевик">Боевик</router-link></li>
             <li><router-link to="/serialy?genre=Вестерн">Вестерн</router-link></li>
             <li><router-link to="/serialy?genre=Военный">Военный</router-link></li>
+            <li><router-link to="/serialy?genre=Боевик">Боевик</router-link></li>
             <li><router-link to="/serialy?genre=Документальный">Документальные</router-link></li>
+            <li><router-link to="/serialy?genre=Драма">Драмы</router-link></li>
             <li><router-link to="/serialy?genre=Детектив">Детективные</router-link></li>
             <li><router-link to="/serialy?genre=Семейный">Детские</router-link></li>
-            <li><router-link to="/serialy?genre=Драма">Драмы</router-link></li>
           </ul>
-          <ul class="navbar__nav-hidden-col">
-            <li><router-link to="/serialy?genre=История">Исторические</router-link></li>
+          <ul class="nav-bar___nav-hidden-col">
             <li><router-link to="/serialy?genre=Комедия">Комедии</router-link></li>
+            <li><router-link to="/serialy?genre=История">Исторические</router-link></li>
             <li><router-link to="/serialy?genre=Криминал">Криминал</router-link></li>
             <li><router-link to="/serialy?genre=Мелодрама">Мелодрамы</router-link></li>
-            <li><router-link to="/serialy?genre=Музыка">Музыка</router-link></li>
-            <li><router-link to="/serialy?genre=Приключения">Приключения</router-link></li>
-            <li><router-link to="/serialy?genre=Семейный">Семейные</router-link></li>
             <li><router-link to="/serialy?genre=Спорт">Спорт</router-link></li>
             <li><router-link to="/serialy?genre=Триллер">Триллеры</router-link></li>
+            <li><router-link to="/serialy?genre=Мюзиклы">Мюзиклы</router-link></li>
+            <li><router-link to="/serialy?genre=Приключения">Приключения</router-link></li>
             <li><router-link to="/serialy?genre=Ужасы">Ужасы</router-link></li>
             <li><router-link to="/serialy?genre=Фантастика">Фантастика</router-link></li>
             <li><router-link to="/serialy?genre=Фэнтези">Фэнтези</router-link></li>
+            <li><router-link to="/serialy?genre=Семейный">Семейные</router-link></li>
           </ul>
         </div>
       </li>
       
       <li><router-link to="/multfilmy">Мультфильмы</router-link></li>
       <li><router-link to="/anime">Аниме</router-link></li>
-      <li><router-link to="/tops">ТОПЫ</router-link></li>
+      <li><router-link to="/novinki">Новинки</router-link></li>
+      <li><router-link to="/top-all-time">Топ</router-link></li>
     </ul>
     
     <div class="header__search search-panel flex-1 js-this-in-mobile-menu" ref="searchContainer">
       <form @submit.prevent="performSearch" class="js-search-form" novalidate="novalidate">
         <input 
           v-model="searchInput"
-          class="search-panel__input input-bigger" 
+          class="srchpanel__input input-bigger" 
           placeholder="Поиск по сайту..." 
           type="text" 
           autocomplete="off"
           @keydown.enter.prevent="performSearch"
         >
         <button 
-          class="search-panel__btn btn-nobg btn-square fal fa-search" 
+          class="srchpanel__btn btn-nobg btn-square fal fa-search" 
           aria-label="Искать" 
           type="submit"
         ></button>
@@ -128,7 +129,7 @@
     
     <button 
       @click="toggleTheme"
-      class="navbar__theme-toggle btn-nobg btn-square fal fa-sun fa-2x js-theme-toggle" 
+      class="nav-bar___theme-toggle btn-nobg btn-square fal fa-sun fa-2x js-theme-toggle" 
       aria-label="Сменить цвет сайта"
     ></button>
   </header>
@@ -158,7 +159,7 @@ function formatRating(val) {
 }
 
 const getPosterUrl = (posterPath) => {
-  if (!posterPath) return '/assets/lordfilm-website/images/bg.jpg'
+  if (!posterPath) return '/assets/ProsmotrZone_site/images/bg.jpg'
   if (posterPath.startsWith('http')) return posterPath
   return posterPath.startsWith('/') ? posterPath : `/${posterPath}`
 };

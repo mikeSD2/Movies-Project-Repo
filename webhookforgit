@@ -1,0 +1,41 @@
+#!/bin/bash
+set -euxo pipefail
+
+export HOME=/root
+export PATH="/www/server/nodejs/bin:/usr/local/bin:$PATH"
+
+PROJECT_DIR="/www/wwwroot/prosmotrzone.online"
+BRANCH="${1:-main}"
+REPO_URL="https://github.com/mikeSD2/Movies-Project-Repo.git"
+
+mkdir -p "$PROJECT_DIR"
+exec >>"$PROJECT_DIR/deploy.log" 2>&1
+echo "== start $(date) as $(whoami)"
+
+# автоинициализация при отсутствии .git
+if [ ! -d "$PROJECT_DIR/.git" ]; then
+  if [ -z "$(ls -A "$PROJECT_DIR")" ]; then
+    git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$PROJECT_DIR"
+  else
+    cd "$PROJECT_DIR"
+    git init
+    git remote remove origin || true
+    git remote add origin "$REPO_URL"
+    git fetch origin "$BRANCH" --prune
+    git checkout -B "$BRANCH" "origin/$BRANCH"
+  fi
+fi
+
+cd "$PROJECT_DIR"
+git config --system --add safe.directory "$PROJECT_DIR" || true
+
+git fetch origin "$BRANCH" --prune
+git reset --hard "origin/$BRANCH"
+git checkout -B "$BRANCH"
+
+npm ci
+systemd-run --scope -p CPUQuota=75% bash -lc 'nice -n 15 ionice -c3 npm run build'
+kill $(lsof -t -i:3002)
+npm run start
+
+echo "== done $(date)"

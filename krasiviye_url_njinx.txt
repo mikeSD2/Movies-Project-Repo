@@ -2,10 +2,10 @@ server
 {
     listen 80;
     listen 443 ssl http2 ;
-    server_name lordfilmhd-smotret.online www.lordfilmhd-smotret.online;
+    server_name ProsmotrZone.online www.ProsmotrZone.online;
     
     index index.php index.html index.htm default.php default.htm default.html;
-    root /www/wwwroot/lordfilmhd-smotret.online/dist;
+    root /www/wwwroot/ProsmotrZone.online/dist;
     
     # --- ВАЖНО: API endpoints должны быть ПЕРЕД общими правилами ---
     
@@ -46,12 +46,12 @@ server
     
     #CERT-APPLY-CHECK--START
     # Configuration related to file verification for SSL certificate application - Do not delete
-    include /www/server/panel/vhost/nginx/well-known/lordfilmhd-smotret.online.conf;
+    include /www/server/panel/vhost/nginx/well-known/ProsmotrZone.online.conf;
     #CERT-APPLY-CHECK--END
     #SSL-START SSL related configuration, do NOT delete or modify the next line of commented-out 404 rules
     #error_page 404/404.html;
-        ssl_certificate    /www/server/panel/vhost/cert/lordfilmhd-smotret.online/fullchain.pem;
-        ssl_certificate_key    /www/server/panel/vhost/cert/lordfilmhd-smotret.online/privkey.pem;
+        ssl_certificate    /www/server/panel/vhost/cert/ProsmotrZone.online/fullchain.pem;
+        ssl_certificate_key    /www/server/panel/vhost/cert/ProsmotrZone.online/privkey.pem;
         ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
         ssl_prefer_server_ciphers on;
@@ -63,7 +63,7 @@ server
     
     #SSL-END
     #referenced redirect rule, if commented, the configured redirect rule will be invalid
-    include /www/server/panel/vhost/nginx/redirect/lordfilmhd-smotret.online/*.conf;
+    include /www/server/panel/vhost/nginx/redirect/ProsmotrZone.online/*.conf;
 
     #ERROR-PAGE-START  Error page configuration, allowed to be commented, deleted or modified
     error_page 404 /404.html;
@@ -75,7 +75,7 @@ server
     #PHP-INFO-END
 
     #REWRITE-START URL rewrite rule reference, any modification will invalidate the rewrite rules set by the panel
-    include /www/server/panel/vhost/rewrite/lordfilmhd-smotret.online.conf;
+    include /www/server/panel/vhost/rewrite/ProsmotrZone.online.conf;
     #REWRITE-END
 
     # Forbidden files or directories
@@ -107,6 +107,6 @@ server
         error_log /dev/null;
         access_log /dev/null; 
     }
-    access_log  /www/wwwlogs/lordfilmhd-smotret.online.log;
-    error_log  /www/wwwlogs/lordfilmhd-smotret.online.error.log;
+    access_log  /www/wwwlogs/ProsmotrZone.online.log;
+    error_log  /www/wwwlogs/ProsmotrZone.online.error.log;
 }

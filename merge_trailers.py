@@ -92,6 +92,6 @@ def merge_updates(main_json_path, update_ndjson_path):
         print(f"Произошла ошибка при сохранении/очистке: {e}")
 
 if __name__ == "__main__":
-    MAIN_JSON = 'movies-data.json'
+    MAIN_JSON = 'movies-data-sorted.json'
     UPDATE_NDJSON = 'trailers-update.ndjson'
     merge_updates(MAIN_JSON, UPDATE_NDJSON)

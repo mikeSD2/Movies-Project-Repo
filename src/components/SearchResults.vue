@@ -1,7 +1,7 @@
 <template>
-  <div class="grid-items count-items search-results-block" style="padding: 20px;">
-    <div class="section__header d-flex ai-center r-gap-20 c-gap-20">
-      <h1 class="section__title flex-1">Результаты поиска: "{{ query }}"</h1>
+  <div class="items-in-grid count-items search-results-block" style="padding: 20px;">
+    <div class="sect___header d-flex ai-center r-gap-20 c-gap-20">
+      <h1 class="sect___title flex-1">Результаты поиска: "{{ query }}"</h1>
       <button @click="$emit('close')" class="btn">Закрыть</button>
     </div>
     
@@ -10,7 +10,7 @@
     </div>
     
     <div v-else>
-      <div class="section__content grid-items" @click="handleMovieClick">
+      <div class="sect___content items-in-grid" @click="handleMovieClick">
         <MovieCard 
           v-for="movie in paginatedResults" 
           :key="movie.id" 

@@ -1,0 +1,122 @@
+server
+{
+    listen 80;
+    listen 443 ssl http2 ;
+    server_name test.lordfilmhd-smotret.online;
+    index index.php index.html index.htm default.php default.htm default.html;
+    root /www/server/stop/;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    
+    #SSL-START SSL related configuration, do NOT delete or modify the next line of commented-out 404 rules
+    #error_page 404/404.html;
+        ssl_certificate    /www/server/panel/vhost/cert/test.lordfilmhd-smotret.online/fullchain.pem;
+        ssl_certificate_key    /www/server/panel/vhost/cert/test.lordfilmhd-smotret.online/privkey.pem;
+        ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_ciphers EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
+        ssl_prefer_server_ciphers on;
+        ssl_session_tickets on;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+        add_header Strict-Transport-Security "max-age=31536000";
+        error_page 497  https://$host$request_uri;
+    
+    #SSL-END
+
+    #ERROR-PAGE-START  Error page configuration, allowed to be commented, deleted or modified
+    error_page 404 /404.html;
+    error_page 502 /502.html;
+    #ERROR-PAGE-END
+
+    #PHP-INFO-START  PHP reference configuration, allowed to be commented, deleted or modified
+    #include enable-php-00.conf;
+    #PHP-INFO-END
+
+    #REWRITE-START URL rewrite rule reference, any modification will invalidate the rewrite rules set by the panel
+    #include /www/server/panel/vhost/rewrite/test.lordfilmhd-smotret.online.conf;
+    #REWRITE-END
+
+    # Forbidden files or directories
+    location ~ ^/(\.user.ini|\.htaccess|\.git|\.env|\.svn|\.project|LICENSE|README.md)
+    {
+        return 404;
+    }
+    
+    # robots.txt: всегда Disallow на тесте
+    location = /robots.txt {
+        default_type text/plain;
+        return 200 "User-agent: *\nDisallow: /\n";
+    }
+    
+    # Directory verification related settings for one-click application for SSL certificate
+    location ~ \.well-known{
+        allow all;
+    }
+
+    #Prohibit putting sensitive files in certificate verification directory
+    if ( $uri ~ "^/\.well-known/.*\.(php|jsp|py|js|css|lua|ts|go|zip|tar\.gz|rar|7z|sql|bak)$" ) {
+        return 403;
+    }
+
+    access_log  /www/wwwlogs/test.lordfilmhd-smotret.online.log;
+    error_log  /www/wwwlogs/test.lordfilmhd-smotret.online.error.log;
+
+    location ^~ /uploads/ {
+        root /www/server/stop;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        try_files $uri =404;
+    }
+
+    # Добавьте именованную локацию — её вызывает try_files $uri @node;
+    location @node {
+        proxy_http_version 1.1;
+        proxy_set_header Host               $host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto  $scheme;
+        proxy_set_header Upgrade            $http_upgrade;
+        proxy_set_header Connection         "upgrade";
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    60s;
+        proxy_send_timeout    60s;
+        proxy_pass http://127.0.0.1:3010;
+    }
+    
+    # JS/CSS/шрифты: сперва файловая система, иначе — в Node (Express отдаст dist/client/assets)
+    location ~ .*\.(js|css|woff2?|ttf|map)$ {
+        expires 12h;
+        access_log off;
+        try_files $uri @node;
+    }
+    
+    # Serve /vendor/* from your test site's public folder
+    location ^~ /vendor/ {
+        alias /www/wwwroot/test.lordfilmhd-smotret.online/public/vendor/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+    }
+    
+    # Картинки
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf|webp|avif|svg)$ {
+        expires 30d;
+        access_log off;
+        try_files $uri @node;
+    }
+    
+    # Разрешаем только вам и PageSpeed/Lighthouse
+    set $block 1;
+    # ВСТАВЬТЕ сюда ваш публичный IP (можно несколько таких if, по одному на IP)
+    if ($remote_addr = 89.187.187.140) { set $block 0; }
+    if ($remote_addr = 193.161.246.54) { set $block 0; }
+    if ($remote_addr = 193.118.55.22) { set $block 0; }
+    if ($remote_addr = 37.46.115.248) { set $block 0; }
+    if ($remote_addr = 89.187.169.67) { set $block 0; }
+    
+    # Разрешаем PageSpeed/Lighthouse (их UA содержит эти маркеры)
+    if ($http_user_agent ~* (Chrome-Lighthouse|Lighthouse|PageSpeed)) { set $block 0; }
+    
+    location / {
+        if ($block) { return 403; }
+        try_files $uri @node;
+    }
+}

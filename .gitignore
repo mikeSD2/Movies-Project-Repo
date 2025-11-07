@@ -40,6 +40,15 @@ uploads/
 server-data/
 chrome_profile/
 
+# Heavy data dumps (root)
+/movies*.json
+/serials*.json
+/films.json
+/*.ndjson
+/*.json.merge-bak
+/movies-data*.json
+/rewritten-descriptions*.ndjson
+
 # Генерируемые/временные файлы
 movies-data.json
 movies-data.json.*

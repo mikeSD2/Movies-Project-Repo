@@ -1,0 +1,161 @@
+# /www/server/nginx/conf/nginx.conf
+user  www www;
+worker_processes auto;
+error_log  /www/wwwlogs/nginx_error.log  crit;
+pid        /www/server/nginx/logs/nginx.pid;
+worker_rlimit_nofile 65535;
+
+stream {
+    log_format tcp_format '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time|$upstream_addr|$upstream_bytes_sent|$upstream_bytes_received|$upstream_connect_time';
+  
+    access_log /www/wwwlogs/tcp-access.log tcp_format;
+    error_log /www/wwwlogs/tcp-error.log;
+    include /www/server/panel/vhost/nginx/tcp/*.conf;
+}
+
+events
+    {
+        use epoll;
+        worker_connections 65535;
+        multi_accept on;
+    }
+
+http
+    {
+    include       mime.types;
+		#include luawaf.conf;
+
+		include proxy.conf;
+        lua_package_path "/www/server/nginx/lib/lua/?.lua;;";
+
+        map $http_user_agent $block_img_bot {
+            default 0;
+
+            # Разрешаем основные поисковики
+            ~*Googlebot 0;
+            ~*Bingbot 0;
+            ~*Yandex(Bot|Images) 0;
+            ~*DuckDuckBot 0;
+            ~*Applebot 0;
+            ~*Google-InspectionTool 0;
+            ~*GoogleOther 0;
+            ~*Yeti 0;        # Naver
+            ~*SeznamBot 0;   # Seznam.cz
+            ~*YepBot 0;      # Yep
+
+            # Блокируем тех. и массовых клиентов
+            ~*python-requests 1;
+            ~*curl 1;
+            ~*bot 1;
+            ~*crawler 1;
+            ~*spider 1;
+        }
+
+        map $http_user_agent $is_bad_ua {
+            default 0;
+            ~*python-requests 1;
+            ~*curl 1;
+            ~*wget 1;
+            ~*httrack 1;
+            ~*sqlmap 1;
+            ~*masscan 1;
+            ~*nikto 1;
+            ~*nmap 1;
+            ~*libwww 1;
+            ~*lwp-trivial 1;
+            ~*^$ 1;                      # пустой UA
+            # опционально (не влияет на индексацию, но «маркет»‑боты): 
+            # ~*MJ12bot 1;
+            # ~*AhrefsBot 1;
+            # ~*SemrushBot 1;
+            # ~*PetalBot 1;
+        }
+        
+        # Разрешаем только ключ IndexNow под любым UA
+        map $request_uri $is_indexnow_key {
+            default 0;
+            =/abcd1234abcd1234abcd1234abcd1234.txt 1;
+        }
+        
+        # Блокируем «плохие UA», но НЕ для ключа
+        map "$is_bad_ua:$is_indexnow_key" $block_ua {
+            default 0;
+            "1:0" 1;   # если плохой UA и это НЕ ключ — блокируем
+        }
+
+        default_type  application/octet-stream;
+
+        server_names_hash_bucket_size 512;
+        client_header_buffer_size 32k;
+        large_client_header_buffers 4 32k;
+        client_max_body_size 50m;
+
+        sendfile   on;
+        tcp_nopush on;
+
+        keepalive_timeout 60;
+
+        tcp_nodelay on;
+
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+        fastcgi_buffer_size 64k;
+        fastcgi_buffers 4 64k;
+        fastcgi_busy_buffers_size 128k;
+        fastcgi_temp_file_write_size 256k;
+		fastcgi_intercept_errors on;
+
+        gzip_types text/plain text/css application/javascript application/json application/xml text/xml application/rss+xml image/svg+xml;
+        gzip_proxied   expired no-cache no-store private auth;
+        gzip_disable   "MSIE [1-6]\.";
+        gzip on;
+        gzip_min_length 1k;
+        gzip_buffers 4 16k;
+        gzip_http_version 1.1;
+        gzip_comp_level 2;
+        gzip_vary on;
+
+        # Кэш /img
+        limit_req_zone $binary_remote_addr zone=img:10m rate=30r/s;
+        proxy_cache_path /var/cache/nginx/img  levels=1:2  keys_zone=img_cache:50m  inactive=30d  max_size=10g;
+
+        # Микро-кэш для SSR/API
+        proxy_cache_path /var/cache/nginx/fast levels=1:2 keys_zone=fast:50m max_size=1g inactive=60s;
+        limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+
+        limit_conn_zone $binary_remote_addr zone=perip:10m;
+		limit_conn_zone $server_name zone=perserver:10m;
+
+        server_tokens off;
+        access_log off;
+
+server
+    {
+        listen 888;
+        server_name phpmyadmin;
+        index index.html index.htm index.php;
+        root  /www/server/phpmyadmin;
+
+        #error_page   404   /404.html;
+        include enable-php.conf;
+
+        location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+        {
+            expires      30d;
+        }
+
+        location ~ .*\.(js|css)?$
+        {
+            expires      12h;
+        }
+
+        location ~ /\.
+        {
+            deny all;
+        }
+
+        access_log  /www/wwwlogs/access.log;
+    }
+include /www/server/panel/vhost/nginx/*.conf;
+}

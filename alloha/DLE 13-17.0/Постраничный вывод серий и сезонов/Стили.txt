@@ -1,0 +1,32 @@
+
+1. Оберните тег вывода сезонов в div
+
+<div class="seasone-pages">
+      {season=[xfvalue_last_season]}
+    </div>
+
+2. Далее задайте нужные стили под Ваш шаблон в css 
+
+.seasone-pages a {код}
+
+3. Слово же "сезон"  - вставляем через :before
+
+.seasone-pages a:before {
+    content: 'Seasone';
+    position: absolute;
+    top: 6px;
+    left: 6px;
+}
+
+.seasone-pages a {
+    display: inline-block;
+    background: aliceblue;
+    padding: 6px 12px;
+    position: relative;
+    min-width: 62px;
+    text-align: right;
+}
+
+4. И задаём стиль для активного сезона, на котором находится пользователь
+
+.seasone-pages a.active 

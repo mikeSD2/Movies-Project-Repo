@@ -5,32 +5,26 @@
     @click="isLightOff = false"
   ></div>
   <div v-if="movie" class="speedbar ws-nowrap">
-    <router-link to="/">LordFilms</router-link> »
+    <router-link to="/">ProsmotrZone</router-link> »
     <router-link :to="`/${movie.category}`">{{ categoryTitle }}</router-link> »
     {{ movie.title }}
   </div>
 
-  <div class="grid-items count-items">
+  <div class="items-in-grid count-items">
     <article v-if="movie && !isLoading" class="page ignore-select">
-      <div class="content-page__bg">
-        <div class="content-page__cols">
-          <div class="content-page__cols-left">
-            <div class="content-page__main">
-              <div class="content-page__header">
+      <div class="contpage__bg">
+        <div class="contpage__cols">
+          <div class="contpage__cols-left">
+            <div class="contpage__main" :class="{ 'is-narrow-poster': isSmallPoster }">
+              <div class="contpage__header">
                 <h1>
                   {{ movie.title }}
-                  <small v-if="movie.season || movie.episode"
-                    >({{
-                      [movie.season, movie.episode].filter(Boolean).join(" ")
-                    }}
-                    | {{ movie.year }}) смотреть онлайн</small
-                  >
-                  <small v-else>({{ movie.year }}) смотреть онлайн</small>
+                  <small>{{ h1Text }}</small>
                 </h1>
               </div>
 
-              <div class="content-page__poster">
-                <div class="content-page__img img-block ratio-2-3 img-mask">
+              <div class="contpage__poster">
+                <div class="contpage__img img-block ratio-2-3 img-mask" :class="{ 'is-narrow': isSmallPoster }">
                   <img
                     :alt="movie.title"
                     :src="imageUrl"
@@ -42,7 +36,7 @@
                   />
                   <div
                     v-if="movie.season || movie.episode"
-                    class="media__label"
+                    class="assets__label"
                   >
                     {{
                       [movie.season, movie.episode].filter(Boolean).join(" ")
@@ -50,17 +44,21 @@
                   </div>
                 </div>
                 <div
-                  class="content-page__rating-ext d-flex ai-center jc-space-between"
+                  class="contpage__rating-ext d-flex ai-center jc-space-between"
                 >
                   <div
-                    class="content-page__ratingscore-ring pi-center p-relative bdrs-50 ratio-1-1"
+                    class="contpage__ratingscore-ring pi-center p-relative bdrs-50 ratio-1-1"
                     style="--p: 100%"
                   >
                     {{ calculatedRating }}
                   </div>
                   <a
                     class="page-rate-btn"
-                    :class="{ voted: userVote === 'like' }"
+                    :class="{
+                      voted: userVote === 'like',
+                      'is-disabled': isVotingDisabled,
+                    }"
+                    :aria-disabled="isVotingDisabled"
                     data-vote-type="like"
                     href="#"
                     @click.prevent="votePage('like')"
@@ -70,7 +68,11 @@
                   </a>
                   <a
                     class="page-rate-btn"
-                    :class="{ voted: userVote === 'dislike' }"
+                    :class="{
+                      voted: userVote === 'dislike',
+                      'is-disabled': isVotingPage,
+                    }"
+                    :aria-disabled="isVotingPage"
                     data-vote-type="dislike"
                     href="#"
                     @click.prevent="votePage('dislike')"
@@ -81,17 +83,61 @@
                 </div>
               </div>
 
-              <div class="content-page__info">
-                <div
-                  class="content-page__text p-relative clearfix js-hide-text"
-                >
+              <div class="contpage__info">
+                <div class="contpage__text p-relative clearfix">
                   <div
-                    class="rich-text p-relative movie-descr"
-                    v-html="movie.description"
-                  ></div>
+                    ref="descrScrollRef"
+                    :class="[
+                      { 'js-hide-text': !isDescriptionExpanded && canExpand },
+                    ]"
+                    :style="
+                      !isDescriptionExpanded && canExpand
+                        ? 'padding-bottom: 38px'
+                        : ''
+                    "
+                  >
+                    <div
+                      ref="descrContentRef"
+                      class="richtxt p-relative movie-descr"
+                    >
+                      <div
+                        v-if="movie.descriptionHtml"
+                        v-html="movie.descriptionHtml"
+                      ></div>
+                      <template v-else>
+                        <p v-for="(p, i) in descriptionParagraphs" :key="i">
+                          {{ p }}
+                        </p>
+                      </template>
+                    </div>
+                  </div>
+
+                  <!-- Кнопка поверх, не прокручивается -->
+                  <button
+                    v-show="
+                      !isDescriptionExpanded &&
+                      (hasMeasured ? canExpand : initialCanExpand)
+                    "
+                    class="show-text"
+                    type="button"
+                    @click="isDescriptionExpanded = true"
+                  >
+                    Развернуть описание
+                  </button>
                 </div>
 
-                <ul class="content-page__list">
+                <!-- Кнопка сворачивания — отдельной строкой -->
+                <!-- <button
+                  v-show="isDescriptionExpanded && (hasMeasured ? canExpand : initialCanExpand)"
+                  class="btn-border btn-smaller"
+                  type="button"
+                  @click="isDescriptionExpanded = false"
+                  style="margin-top: 8px"
+                >
+                  Свернуть описание
+                </button> -->
+
+                <ul class="contpage__list">
                   <li v-if="movie.originalTitle">
                     <span>Название:</span>
                     <span>{{ movie.originalTitle }}</span>
@@ -141,9 +187,13 @@
                     <span>Перевод:</span>
                     <template v-for="(tr, index) in translationsList" :key="tr">
                       <router-link
-                        :to="`/${movie.category}?translation=${encodeURIComponent(tr)}`"
-                      >{{ tr }}</router-link
-                      ><span v-if="index < translationsList.length - 1">, </span>
+                        :to="`/${
+                          movie.category
+                        }?translation=${encodeURIComponent(tr)}`"
+                        >{{ tr }}</router-link
+                      ><span v-if="index < translationsList.length - 1"
+                        >,
+                      </span>
                     </template>
                   </li>
                   <li v-if="movie.ageRating">
@@ -151,72 +201,53 @@
                   </li>
                   <li
                     v-if="movie.kpRating || movie.imdbRating"
-                    class="content-page__list-rates d-flex ai-center c-gap-20"
+                    class="contpage__list-rates d-flex ai-center c-gap-20"
                   >
                     <div
                       v-if="movie.kpRating"
-                      class="content-page__list-rates-item kp"
+                      class="contpage__list-rates-item kp"
                     >
                       {{ movie.kpRating }}
                     </div>
                     <div
                       v-if="movie.imdbRating"
-                      class="content-page__list-rates-item imdb"
+                      class="contpage__list-rates-item imdb"
                     >
                       {{ formatRating(movie.imdbRating) }}
                     </div>
                   </li>
-                  <li v-if="movie.actors" class="content-page__list-wide">
+                  <li v-if="movie.actors" class="contpage__list-wide">
                     <span>В ролях:</span>
-                    <template v-for="(actor, index) in actorsList" :key="actor">
-                      <router-link
-                        :to="`/${movie.category}?actor=${encodeURIComponent(
-                          actor
-                        )}`"
-                        >{{ actor }}</router-link
-                      ><span v-if="index < actorsList.length - 1">, </span>
+                    <template v-for="(actor, index) in actorsListLimited" :key="actor">
+                      <span class="actor-name">{{ actor }}</span><span v-if="index < actorsListLimited.length - 1">, </span>
                     </template>
+                    <span v-if="actorsList.length > actorsListLimited.length"> и другие</span>
                   </li>
                 </ul>
-
-                <div
-                  class="stext-style"
-                  style="
-                    border-left: 4px solid #a0aec0;
-                    margin-top: 20px;
-                    padding: 16px;
-                    border-radius: 4px;
-                    line-height: 1.7;
-                  "
-                >
-                  {{ seoDescription }}
-                </div>
               </div>
             </div>
 
-            <h2 class="content-page__subtitle">
-              «{{ movie.title }}» смотреть онлайн бесплатно в HD качестве
+            <h2 class="contpage__subtitle">
+              {{ h2Text }}
             </h2>
           </div>
         </div>
 
         <!-- Плеер -->
-        <div class="content-page__cols">
+        <div class="contpage__cols">
           <div
-            class="content-page__cols-left content-page__player tabs-block nl"
+            class="contpage__cols-left contpage__player tabs-block nl"
             id="player-container"
             :class="{ 'player-overlay': isLightOff }"
           >
-            <div
-              class="content-page__player-controls d-flex ai-center p-relative"
-            >
+            <div class="contpage__player-controls d-flex ai-center p-relative">
               <div
                 class="tabs-block__select d-flex flex-1"
                 v-if="hasWorkingPlayer"
               >
                 <template v-for="(player, index) in players" :key="index">
                   <button
-                    v-if="!failedPlayers[index]"
+                    v-if="index === 0 || !failedPlayers[index]"
                     :class="{ active: activeTab === index }"
                     @click="activeTab = index"
                   >
@@ -225,12 +256,9 @@
                 </template>
               </div>
               <div
-                class="content-page__complaint d-flex ai-center jc-space-between c-gap-20"
+                class="contpage__complaint d-flex ai-center jc-space-between c-gap-20"
               >
-                <label
-                  class="content-page__light-button has-checkbox"
-                  for="light"
-                >
+                <label class="contpage__light-button has-checkbox" for="light">
                   <input
                     id="light"
                     name="light"
@@ -247,7 +275,15 @@
               v-if="hasWorkingPlayer"
             >
               <template v-for="(player, index) in players" :key="index">
-                <div v-if="!failedPlayers[index]" v-show="activeTab === index">
+                <div
+                  v-if="index === 0 || !failedPlayers[index]"
+                  v-show="activeTab === index"
+                  class="player-pane"
+                >
+                  <!-- <div v-if="!playerReady[index]" class="player-loader">
+                    <div class="player-loader__spinner"></div>
+                    <span>Загружаем плеер…</span>
+                  </div> -->
                   <div
                     v-if="player.type === 'sv'"
                     :id="`player_video_${index}`"
@@ -293,6 +329,7 @@
                       frameborder="0"
                       loading="lazy"
                       :src="player.src"
+                      @load="handleYoutubeLoad(index)"
                     ></iframe>
                   </div>
                 </div>
@@ -312,13 +349,17 @@
             </div>
 
             <div
-              class="content-page__player-bottom d-flex ai-center jc-space-between r-gap-20 c-gap-20"
+              class="contpage__player-bottom d-flex ai-center jc-space-between r-gap-20 c-gap-20"
             >
-              <div class="content-page__fav p-relative ml-auto"></div>
-              <div class="content-page__likes d-flex fa-inside-1.3x">
+              <div class="contpage__fav p-relative ml-auto"></div>
+              <div class="contpage__likes d-flex fa-inside-1.3x">
                 <a
                   class="page-rate-btn"
-                  :class="{ voted: userVote === 'like' }"
+                  :class="{
+                    voted: userVote === 'like',
+                    'is-disabled': isVotingPage,
+                  }"
+                  :aria-disabled="isVotingPage"
                   data-vote-type="like"
                   href="#"
                   @click.prevent="votePage('like')"
@@ -328,7 +369,11 @@
                 </a>
                 <a
                   class="page-rate-btn"
-                  :class="{ voted: userVote === 'dislike' }"
+                  :class="{
+                    voted: userVote === 'dislike',
+                    'is-disabled': isVotingPage,
+                  }"
+                  :aria-disabled="isVotingPage"
                   data-vote-type="dislike"
                   href="#"
                   @click.prevent="votePage('dislike')"
@@ -342,15 +387,11 @@
         </div>
 
         <!-- Комментарии -->
-        <div class="content-page__cols">
-          <div class="content-page__cols-left">
-            <div class="content-page__comments">
-              <div class="section__title">
-                Комментарии ({{ commentsCount }})
-              </div>
-              <div
-                class="content-page__comments-info fal fa-exclamation-circle"
-              >
+        <div class="contpage__cols">
+          <div class="contpage__cols-left">
+            <div class="contpage__comments">
+              <div class="sect___title">Комментарии ({{ commentsCount }})</div>
+              <div class="contpage__comments-info fal fa-exclamation-circle">
                 Минимальная длина комментария - 50 знаков. Комментарии
                 модерируются
               </div>
@@ -358,7 +399,7 @@
               <!-- Main Comment Form Container -->
               <div
                 v-if="!replyToCommentId"
-                class="content-page__ac"
+                class="contpage__ac"
                 id="main-comment-form"
               >
                 <form id="dle-comments-form" @submit.prevent="submitComment">
@@ -411,7 +452,7 @@
                         <div
                           class="g-recaptcha"
                           data-language="ru"
-                          data-sitekey="6LetOK8rAAAAAEH_P1q84u7IV8HbwHgfuh6g4K5w"
+                          data-sitekey="6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
                           data-theme="light"
                         ></div>
                       </div>
@@ -440,10 +481,7 @@
               <div v-if="comments.length === 0" class="message-info">
                 Комментариев еще нет. Вы можете стать первым!
               </div>
-              <div
-                class="content-page__comments-list"
-                id="content-page__comments-list"
-              >
+              <div class="contpage__comments-list" id="contpage__comments-list">
                 <div id="dle-ajax-comments">
                   <div
                     v-for="comment in processedComments"
@@ -459,15 +497,15 @@
                       }"
                     >
                       <div
-                        class="comment__header d-flex ai-center jc-space-between"
+                        class="coment__header d-flex ai-center jc-space-between"
                       >
-                        <div class="comment__author">{{ comment.name }}</div>
-                        <div class="comment__date">{{ comment.date }}</div>
+                        <div class="coment__author">{{ comment.name }}</div>
+                        <div class="coment__date">{{ comment.date }}</div>
                       </div>
-                      <div class="comment__text">{{ comment.comment }}</div>
-                      <div class="comment__tools">
+                      <div class="coment__text">{{ comment.comment }}</div>
+                      <div class="coment__tools">
                         <div
-                          class="comment__rating"
+                          class="coment__rating"
                           :data-comment-id="comment.id"
                         >
                           <span class="ratingtypeplusminus">{{
@@ -476,21 +514,23 @@
                               : comment.rating
                           }}</span>
                           <a
-                            class="comment__rating-btn thelike"
+                            class="coment__rating-btn thelike"
                             href="#"
                             @click.prevent="voteComment(comment.id, 'like')"
                             :class="{
                               voted: getUserVote(comment.id) === 'like',
+                              'is-disabled': isCommentLocked(comment.id),
                             }"
                           >
                             <span class="fal fa-thumbs-up"></span>
                           </a>
                           <a
-                            class="comment__rating-btn thedislike"
+                            class="coment__rating-btn thedislike"
                             href="#"
                             @click.prevent="voteComment(comment.id, 'dislike')"
                             :class="{
                               voted: getUserVote(comment.id) === 'dislike',
+                              'is-disabled': isCommentLocked(comment.id),
                             }"
                           >
                             <span class="fal fa-thumbs-down"></span>
@@ -562,7 +602,7 @@
                               <div
                                 class="g-recaptcha"
                                 data-language="ru"
-                                data-sitekey="6LetOK8rAAAAAEH_P1q84u7IV8HbwHgfuh6g4K5w"
+                                data-sitekey="6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
                                 data-theme="light"
                               ></div>
                             </div>
@@ -598,11 +638,11 @@
         </div>
 
         <!-- Похожие фильмы -->
-        <div v-if="relatedMovies.length" class="content-page__related carou">
+        <div v-if="relatedMovies.length" class="contpage__related carou">
           <div class="carou__caption">Смотрите также:</div>
-          <div class="content-page__content carousel-grid">
+          <div class="contpage__content carousel-grid">
             <MovieCard
-              v-for="relatedMovie in relatedMovies"
+              v-for="(relatedMovie, idx) in relatedMovies"
               :key="relatedMovie.id"
               :movie="relatedMovie"
               :priority="idx === 0"
@@ -634,10 +674,74 @@ import {
   onBeforeUnmount,
 } from "vue";
 import MovieCard from "./MovieCard.vue";
+import { updateMovieSeo } from "../assets/seoUtils.js";
 
 const props = defineProps({
   category: String,
   id: String,
+});
+
+const isDescriptionExpanded = ref(false);
+const descrScrollRef = ref(null);
+const descrContentRef = ref(null);
+const canExpand = ref(false);
+const hasMeasured = ref(false);
+
+const normalizedDescription = computed(() =>
+  (movie.value?.description || "").replace(/\\n/g, "\n")
+);
+
+const stripMdBold = (s) =>
+  (s ?? "").replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*\*/g, "");
+
+function updateCanExpand() {
+  const content = descrContentRef.value;
+  if (!content) {
+    canExpand.value = false;
+    hasMeasured.value = true;
+    return;
+  }
+  const MAX_COLLAPSED = 160; // как в .js-hide-text
+  canExpand.value = content.scrollHeight > MAX_COLLAPSED + 1;
+  hasMeasured.value = true;
+}
+
+// Добавьте:
+let resizeRAF = null;
+function scheduleMeasure() {
+  if (resizeRAF) cancelAnimationFrame(resizeRAF);
+  resizeRAF = requestAnimationFrame(() => {
+    updateCanExpand();
+    resizeRAF = null;
+  });
+}
+
+let descrResizeObs = null;
+
+onMounted(() => {
+  nextTick(() => {
+    updateCanExpand();
+    // Точечно следим за реальным контейнером описания
+    const el = descrContentRef.value;
+    if ("ResizeObserver" in window && el) {
+      descrResizeObs = new ResizeObserver(() => scheduleMeasure());
+      descrResizeObs.observe(el);
+    } else {
+      // Фолбэк на редких браузерах
+      window.addEventListener("resize", scheduleMeasure, { passive: true });
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  if (descrResizeObs) {
+    try {
+      descrResizeObs.disconnect();
+    } catch {}
+    descrResizeObs = null;
+  } else {
+    window.removeEventListener("resize", scheduleMeasure);
+  }
 });
 
 const injected =
@@ -655,6 +759,12 @@ const state = reactive({
   categories: initialPayload?.categories || {},
   related: initialPayload?.related || [],
 });
+
+watch(
+  () => state.movie && state.movie.description,
+  () => nextTick(scheduleMeasure)
+);
+
 const isLoading = ref(!state.movie);
 async function loadMovie(id = props.id) {
   try {
@@ -757,9 +867,108 @@ function setJsonLd(id, obj) {
 
 const movie = computed(() => state.movie);
 
+const initialCanExpand = computed(() => {
+  const text = movie.value?.description || "";
+  if (!text) return false;
+  // Достаточно длинный текст или явные блочные/разрывные теги/абзацы
+  return (
+    text.length > 220 || /\n{2,}/.test(text) || /<p|<br|<li|<div/i.test(text)
+  );
+});
+
+const kodikDirectUrl = ref("");
+
+watch(
+  movie,
+  async (m) => {
+    kodikDirectUrl.value = "";
+    if (!m) return;
+
+    // Если нет KP-ID, но есть флаг iskodik — пробуем достать прямой URL
+    if (!m.kinopoiskId && m.iskodik) {
+      // 1) если уже пришёл с бэка (вдруг ты добавишь в movies-data.json)
+      if (m.kodikPlayer) {
+        kodikDirectUrl.value = m.kodikPlayer;
+        return;
+      }
+      if (typeof window === "undefined") return; // важно
+      // 2) берём из большого файла через API
+      try {
+        const r = await fetch(`/api/kodik-url/${m.id}`);
+        if (r.ok) {
+          const j = await r.json();
+          kodikDirectUrl.value = j?.url || "";
+        }
+      } catch {}
+    }
+  },
+  { immediate: true }
+);
+
 const categoryTitle = computed(() => {
   if (!movie.value) return "";
-  return state.categories?.[movie.value.category] || "Контент";
+  const map = {
+    filmy: "Фильмы",
+    films: "Фильмы",
+    serialy: "Сериалы",
+    serials: "Сериалы",
+    anime: "Аниме",
+    animes: "Аниме",
+    multfilmy: "Мультфильмы",
+    multfilm: "Мультфильмы",
+    cartoons: "Мультфильмы",
+  };
+  const slug = movie.value.category;
+  return state.categories?.[slug] || map[slug] || "Фильмы и сериалы";
+});
+
+const categoryLabel = computed(() => {
+  const c = movie.value?.category;
+  switch (c) {
+    case "filmy":
+      return "фильм";
+    case "serialy":
+    case "serials":
+      return "сериал";
+    case "anime":
+    case "animes":
+      return "аниме";
+    case "multfilmy":
+    case "multfilm":
+    case "cartoons":
+      return "мультфильм";
+    default:
+      return "";
+  }
+});
+
+const isSerialLike = computed(() => {
+  const c = movie.value?.category;
+  return c === "serialy" || c === "serials" || c === "anime" || c === "animes";
+});
+
+const h1Text = computed(() => {
+  const m = movie.value;
+  if (!m) return "";
+  const seasonEpisode = [m.season, m.episode].filter(Boolean).join(" ");
+  const year = m.year ? String(m.year) : "";
+  if (isSerialLike.value) {
+    // Для сериалов и аниме
+    return seasonEpisode
+      ? `сериал смотреть онлайн ${seasonEpisode} (${year})`
+      : `сериал смотреть онлайн (${year})`;
+  }
+  // Для фильмов и мультфильмов
+  return `фильм ${year} смотреть онлайн`;
+});
+
+const h2Text = computed(() => {
+  const m = movie.value;
+  if (!m) return "";
+  const year = m.year ? String(m.year) : "";
+  const labelLower = categoryLabel.value || "фильм";
+  const label = labelLower ? labelLower.slice(0, 1).toUpperCase() + labelLower.slice(1) : "Фильм";
+  return `${label} ${year} ${m.title} смотреть онлайн в качестве hd 1080 бесплатно`;
 });
 
 // Функция для правильного формирования пути к изображению
@@ -783,10 +992,29 @@ const posterSrcset = computed(() => {
     `${mk(360)} 360w`,
     `${mk(540)} 540w`,
     `${mk(720)} 720w`,
-    `${mk(1080)} 1080w`
+    `${mk(1080)} 1080w`,
   ].join(", ");
 });
-const posterSizes = "(max-width: 760px) 42vw, (max-width: 1220px) 240px, 240px";
+const posterSizes = computed(() => isSmallPoster ? "(max-width: 760px) 33vw, (max-width: 1220px) 200px, 200px" : "(max-width: 760px) 42vw, (max-width: 1220px) 240px, 240px");
+
+// Определяем узкие постеры (нативная ширина <= 210px)
+const isSmallPoster = ref(false);
+function checkPosterSize() {
+ if (typeof window === "undefined") return;
+ const url = imageUrl.value;
+ if (!url) {
+   isSmallPoster.value = false;
+   return;
+ }
+ const img = new Image();
+ img.onload = () => {
+   const w = img.naturalWidth || 0;
+   isSmallPoster.value = w > 0 && w <= 210;
+ };
+ img.onerror = () => (isSmallPoster.value = false);
+ img.src = url;
+}
+watch(imageUrl, () => checkPosterSize(), { immediate: true });
 
 const countriesList = computed(() => {
   const c = movie.value?.country;
@@ -806,95 +1034,137 @@ const actorsList = computed(() => {
     .filter(Boolean);
 });
 
+const MAX_ACTORS = 15;
+const actorsListLimited = computed(() => actorsList.value.slice(0, MAX_ACTORS));
+
+// Настройки отбора и приоритета переводов
+const MAX_TRANSLATIONS = 15;
+
+// Явно отсекаем «мусорные» варианты
+const RAW_BLACKLIST = new Set(["Реальный перевод", "Субтитры автоперевод"]);
+
+// Чем раньше в списке — тем выше приоритет
+const TRANSLATION_PRIORITY = [
+  // Типы
+  "Дубляж",
+  "Дублированный",
+  "Профессиональный",
+  "Русские субтитры",
+  "Субтитры",
+
+  // Популярные студии (пополняйте по вкусу)
+  "AniLibria",
+  "SHIZA Project",
+  "AniDUB",
+  "Crunchyroll",
+  "Wakanim",
+  "AniStar",
+  "AnimeVost",
+  "Animedia",
+  "AniRise",
+  "AniBaza",
+  "AniJoy",
+  "JAM",
+  "KOMOREBI",
+  "Kitsune Studio",
+  "Studio Band",
+  "HaronMedia",
+  "Freedub Studio",
+  "FumoDub",
+  "ConeVoice",
+  "Inkwell Studio",
+  "AniCosmic",
+  "AniLeague",
+  "AniLiberty",
+  "youmiteru",
+  "SEKAI PROJECT",
+];
+
+// Быстрый поиск веса
+const PRIORITY_WEIGHT = (() => {
+  const m = new Map();
+  let w = 1000;
+  for (const name of TRANSLATION_PRIORITY) m.set(name.toLowerCase(), w--);
+  return m;
+})();
+
+function normalizeTranslationName(s) {
+  let name = String(s || "").trim();
+
+  // Убираем тех. суффиксы и скобки
+  name = name.replace(/\.?Subtitles$/i, "");
+  name = name.replace(/\.?TV$/i, "");
+  name = name.replace(/\s*\((?:AniLibria|AniLiberty)[^)]+\)\s*/gi, "");
+  name = name.replace(/\s*&\s*Wakanim/i, ""); // оставим Wakanim отдельно
+
+  // Сводим некоторые варианты к каноническому виду
+  const low = name.toLowerCase();
+  if (low === "anilibria.tv" || low === "anilibria subtitles")
+    name = "AniLibria";
+  if (low === "aniliberty (anilibria)") name = "AniLibria";
+  if (low === "crunchyroll subtitles") name = "Crunchyroll";
+  if (low === "anileague.tv") name = "AniLeague";
+  if (low === "студия band & wakanim" || low === "studio band & wakanim")
+    name = "Wakanim";
+
+  // Приводим к заглавному виду первой буквы (аккуратно)
+  return name.trim();
+}
+
+function weightTranslation(displayName) {
+  const key = displayName.toLowerCase();
+  if (PRIORITY_WEIGHT.has(key)) return PRIORITY_WEIGHT.get(key);
+
+  // Общие эвристики
+  if (/дубляж|дублирован/i.test(displayName)) return 900;
+  if (/субтит/i.test(displayName)) return 700;
+
+  // Слегка поднимаем варианты с «озвучк»
+  if (/озвуч/i.test(displayName)) return 650;
+
+  // Дефолт
+  return 100;
+}
+
 const translationsList = computed(() => {
   const t = movie.value?.translation;
   if (!t) return [];
-  return Array.isArray(t)
-    ? t.map((s) => String(s).trim()).filter(Boolean)
-    : [String(t).trim()].filter(Boolean);
+
+  // Разворачиваем в массив строк
+  const raw = Array.isArray(t)
+    ? t.flatMap((s) => String(s).split(","))
+    : String(t).split(",");
+
+  // Нормализуем, чистим, убираем дубли
+  const seen = new Set();
+  const items = [];
+  for (const s of raw) {
+    const orig = String(s).trim();
+    if (!orig || RAW_BLACKLIST.has(orig)) continue;
+
+    const norm = normalizeTranslationName(orig);
+    const key = norm.toLowerCase();
+    if (!norm || seen.has(key)) continue;
+
+    seen.add(key);
+    items.push(norm);
+  }
+
+  // Сортируем по весу и алфавиту, обрезаем
+  items.sort((a, b) => {
+    const wa = weightTranslation(a);
+    const wb = weightTranslation(b);
+    if (wb !== wa) return wb - wa;
+    return a.localeCompare(b, "ru");
+  });
+
+  return items.slice(0, MAX_TRANSLATIONS);
 });
 
+// заменить тело updateSeo
 function updateSeo() {
-  if (!movie.value) {
-    if (isLoading.value) {
-      document.title = "Загрузка… — LordFilms";
-      setMeta("robots", "index,follow");
-      setCanonical(window.location.href);
-      return;
-    }
-    document.title = "Страница не найдена — LordFilms";
-    setMeta("robots", "noindex,follow");
-    setCanonical(window.location.href);
-    return;
-  }
-  const origin = window.location.origin;
-  const pageUrl = `${origin}/${movie.value.category}/${movie.value.id}`;
-  const titleFull = `${movie.value.title} (${movie.value.year}) смотреть онлайн — LordFilms`;
-  const desc = (movie.value.description || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 300);
-  const posterAbs = imageUrl.value
-    ? new URL(imageUrl.value, origin).href
-    : undefined;
-
-  document.title = titleFull;
-  setMeta("description", desc);
-
-  setOg("og:type", "video.movie");
-  setOg("og:title", titleFull);
-  setOg("og:description", desc);
-  setOg("og:url", pageUrl);
-  if (posterAbs) setOg("og:image", posterAbs);
-
-  setTwitter("twitter:card", "summary_large_image");
-  setTwitter("twitter:title", titleFull);
-  setTwitter("twitter:description", desc);
-  if (posterAbs) setTwitter("twitter:image", posterAbs);
-
-  setCanonical(pageUrl);
-
-  // JSON-LD: Movie
-  const rating = movie.value.imdbRating || movie.value.kpRating;
-  const movieLd = {
-    "@context": "https://schema.org",
-    "@type": "Movie",
-    name: movie.value.title,
-    datePublished: movie.value.year ? String(movie.value.year) : undefined,
-    image: posterAbs,
-    aggregateRating: rating
-      ? {
-          "@type": "AggregateRating",
-          ratingValue: Number(rating),
-          bestRating: 10,
-          ratingCount: 100, // эвристика; можно заменить на реальные данные при появлении
-        }
-      : undefined,
-    description: desc,
-  };
-  setJsonLd("movie", movieLd);
-
-  // JSON-LD: Breadcrumbs
-  const breadcrumbs = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: origin + "/" },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: state.categories?.[movie.value.category] || "Категория",
-        item: `${origin}/${movie.value.category}`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: movie.value.title,
-        item: pageUrl,
-      },
-    ],
-  };
-  setJsonLd("breadcrumbs", breadcrumbs);
+  if (typeof window === "undefined") return;
+  updateMovieSeo(movie.value, categoryTitle.value);
 }
 
 onMounted(() => updateSeo());
@@ -902,87 +1172,79 @@ watch(movie, () => updateSeo());
 watch(imageUrl, () => updateSeo());
 
 const players = computed(() => {
-  if (!movie.value || !movie.value.kinopoiskId) return [];
+  const m = movie.value;
+  if (!m) return [];
 
-  const allPlayers = [
-    {
-      name: "Плеер 1",
-      type: "sv",
-      kinopoiskId: movie.value.kinopoiskId,
-    },
-    {
-      name: "Плеер 2",
-      type: "iframe",
-      src: `https://polygamist-as.stloadi.live/?kp=${movie.value.kinopoiskId}&token=eb79c8a500d725f071c3bcc1e975bb`,
-    },
-    {
-      name: "Плеер 3",
-      type: "iframe",
-      src: `https://api.atomics.ws/embed/kp/${movie.value.kinopoiskId}?theme=2&theme=2`,
-    },
-    {
-      name: "Плеер 4",
-      type: "kodik",
-      kinopoiskId: movie.value.kinopoiskId,
-    },
-  ];
+  const hasKp = !!m.kinopoiskId;
+  if (hasKp) {
+    // исходный список
+    let list = [
+      { type: "sv", kinopoiskId: m.kinopoiskId },
+      {
+        type: "iframe",
+        src: `https://polygamist-as.stloadi.live/?kp=${m.kinopoiskId}&token=eb79c8a500d725f071c3bcc1e975bb`,
+      },
+      {
+        type: "iframe",
+        src: `https://api.atomics.ws/embed/kp/${m.kinopoiskId}?theme=2&theme=2`,
+      },
+      { type: "kodik", kinopoiskId: m.kinopoiskId },
+    ];
 
-  const restrictedCountries = [
-    "Россия",
-    "США",
-    "Канада",
-    "Франция",
-    "Великобритания",
-    "Германия",
-    "Италия",
-    "Испания",
-    "Бельгия",
-    "Швеция",
-    "Дания",
-    "Норвегия",
-    "Финляндия",
-    "Ирландия",
-    "Польша",
-    "Украина",
-    "Нидерланды",
-    "Швейцария",
-    "Австрия",
-    "Чехия",
-    "Венгрия",
-    "Румыния",
-    "Болгария",
-    "Греция",
-    "Сербия",
-    "Хорватия",
-    "Словения",
-    "Словакия",
-    "Литва",
-    "Латвия",
-    "Эстония",
-  ];
+    // запрет стран оставляем как было
+    const restrictedCountries = [
+      /*...*/
+    ];
+    const movieCountries = m.country
+      ? m.country.split(",").map((c) => c.trim())
+      : [];
+    const isRestricted = movieCountries.some((mc) =>
+      restrictedCountries.includes(mc)
+    );
+    if (isRestricted) list = list.filter((p) => p.type !== "kodik");
 
-  let playerList = [...allPlayers];
-  const movieCountries = movie.value.country
-    ? movie.value.country.split(",").map((c) => c.trim())
-    : [];
+    // если iskodik — можно поднимать kodik (как было)
+    if (!isRestricted && m.iskodik) {
+      const i = list.findIndex((p) => p.type === "kodik");
+      if (i > -1) {
+        const [kd] = list.splice(i, 1);
+        list.unshift(kd);
+      }
+    }
 
-  const isRestricted = movieCountries.some((mc) =>
-    restrictedCountries.includes(mc)
-  );
+    // ВАЖНО: поднимем iframe над SV (SV вторая позиция)
+    const iIframe = list.findIndex((p) => p.type === "iframe");
+    const iSv = list.findIndex((p) => p.type === "sv");
+    if (iIframe > -1 && iSv > -1 && iIframe > iSv) {
+      const [ifr] = list.splice(iIframe, 1);
+      list.splice(iSv, 0, ifr); // iframe перед SV
+    }
 
-  if (isRestricted) {
-    playerList = playerList.filter((p) => p.type !== "kodik");
+    list = list.map((p, i) => ({ ...p, name: `Плеер ${i + 1}` }));
+    if (m.youtubeId) {
+      list.push({
+        name: "Трейлер",
+        type: "youtube",
+        src: `https://www.youtube.com/embed/${m.youtubeId}`,
+      });
+    }
+    return list;
   }
 
-  if (movie.value.youtubeId) {
-    playerList.push({
+  // без KP
+  const mains = [];
+  if (m.iskodik) {
+    const url = m.kodikPlayer || kodikDirectUrl.value || "";
+    if (url) mains.push({ type: "iframe", src: url });
+  }
+  let list = mains.map((p, i) => ({ ...p, name: `Плеер ${i + 1}` }));
+  if (m.youtubeId)
+    list.push({
       name: "Трейлер",
       type: "youtube",
-      src: `https://www.youtube.com/embed/${movie.value.youtubeId}`,
+      src: `https://www.youtube.com/embed/${m.youtubeId}`,
     });
-  }
-
-  return playerList;
+  return list;
 });
 
 async function precheckIframePlayers() {
@@ -1000,51 +1262,82 @@ async function precheckIframePlayers() {
     } catch {}
   });
   await Promise.all(checks);
-  if (failedPlayers.value[activeTab.value]) switchToNextPlayer(activeTab.value);
+  // if (failedPlayers.value[activeTab.value]) switchToNextPlayer(activeTab.value);
 }
 
 const activeTab = ref(0);
 const isLightOff = ref(false);
 
 const failedPlayers = ref([]);
+const playerReady = ref({});
+
 watch(
   players,
   (list) => {
     failedPlayers.value = Array(list.length).fill(false);
+    const prev = playerReady.value || {};
+    const next = {};
+    list.forEach((_, idx) => {
+      next[idx] = Boolean(prev[idx]);
+    });
+    playerReady.value = next;
   },
   { immediate: true }
 );
 
+watch(activeTab, (i) => {
+  const p = players.value?.[i];
+  if (p?.type === "sv") ensureCdnVideoHub();
+  if (p?.type === "iframe") preconnectForPlayers([p]);
+});
+
 const hasWorkingPlayer = computed(() => {
   const list = players.value || [];
   if (list.length === 0) return false;
+  // Никогда не скрываем контейнер, если первый плеер есть (даже если он упал)
+  if (list.length > 0) return true;
   return list.some((_, i) => !failedPlayers.value[i]);
 });
 
-function markPlayerFailed(index) {
-  if (!failedPlayers.value[index]) failedPlayers.value[index] = true;
+function markPlayerReady(index) {
+  if (playerReady.value[index]) return;
+  playerReady.value = { ...playerReady.value, [index]: true };
 }
 
-// Заменить существующую версию на эту (пропускает упавшие)
-function switchToNextPlayer(fromIndex) {
-  for (let i = fromIndex + 1; i < players.value.length; i++) {
-    if (!failedPlayers.value[i]) {
-      activeTab.value = i;
-      return true;
-    }
+function markPlayerFailed(index) {
+  const total = players.value.length;
+  if (!total) return;
+
+  const snapshot = failedPlayers.value.slice(0, total);
+  while (snapshot.length < total) snapshot.push(false);
+
+  if (!snapshot[index]) {
+    snapshot[index] = true;
   }
-  for (let i = 0; i < fromIndex; i++) {
-    if (!failedPlayers.value[i]) {
-      activeTab.value = i;
-      return true;
-    }
-  }
-  return false;
+
+  failedPlayers.value = snapshot;
+  markPlayerReady(index);
 }
+
+// // Заменить существующую версию на эту (пропускает упавшие)
+// function switchToNextPlayer(fromIndex) {
+//   for (let i = fromIndex + 1; i < players.value.length; i++) {
+//     if (!failedPlayers.value[i]) {
+//       activeTab.value = i;
+//       return true;
+//     }
+//   }
+//   for (let i = 0; i < fromIndex; i++) {
+//     if (!failedPlayers.value[i]) {
+//       activeTab.value = i;
+//       return true;
+//     }
+//   }
+//   return false;
+// }
 
 function failAndSwitch(index) {
   markPlayerFailed(index);
-  switchToNextPlayer(index);
 }
 
 function safeFail(index) {
@@ -1068,13 +1361,19 @@ function dbg(...a) {
 const allohaReadyByIndex = ref({});
 function markAllohaReady(index) {
   allohaReadyByIndex.value[index] = true;
-  clearFallbackTimer();
+  markPlayerReady(index);
+  // clearFallbackTimer();
 }
 
 const svReadyByIndex = ref({});
 function markSvReady(index) {
   svReadyByIndex.value[index] = true;
-  clearFallbackTimer();
+  markPlayerReady(index);
+  // clearFallbackTimer();
+}
+
+function markSvError(index) {
+  markPlayerFailed(index);
 }
 
 function handleWindowMessage(e) {
@@ -1133,11 +1432,12 @@ function handleCdnMessage(e) {
 onBeforeUnmount(() => {
   window.removeEventListener("message", handleWindowMessage);
   window.removeEventListener("message", handleCdnMessage);
-  clearFallbackTimer();
+  // clearFallbackTimer();
 });
 
 // Refs and helpers for auto-switching between players
-let fallbackTimer = null;
+// let fallbackTimer = null;
+let svMessageTimer = null; // +++ новый таймер ожидания ready-сообщения
 const iframeRefs = ref({});
 const svWaitStart = ref(0);
 
@@ -1149,13 +1449,18 @@ function registerIframeRef(index, el) {
   iframeRefs.value[index] = el;
 }
 
-function clearFallbackTimer() {
-  if (fallbackTimer) {
-    clearTimeout(fallbackTimer);
-    fallbackTimer = null;
-  }
-}
-
+// function clearFallbackTimer() {
+//   if (fallbackTimer) {
+//     clearTimeout(fallbackTimer);
+//     fallbackTimer = null;
+//   }
+//   if (svMessageTimer) {
+//     // +++ чистим второй таймер
+//     clearTimeout(svMessageTimer);
+//     svMessageTimer = null;
+//   }
+// }
+function clearFallbackTimer() {}
 function svHasMainIframe(index) {
   const container = document.getElementById(`player_video_${index}`);
   if (!container) return false;
@@ -1226,89 +1531,157 @@ async function handleIframeLoad(index) {
   const p = players.value[index];
   if (!p || p.type !== "iframe") return;
 
-  if (isAlloha(p.src)) return; // спец-ветка как есть
-
-  // Проверяем только текущий активный iframe, отложенно
-  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 500));
-  idle(async () => {
+  const runProbe = async () => {
     if (activeTab.value !== index) return;
-    const res = await probePlayer(p.src);
+    let res = null;
+
+    try {
+      res = await probePlayer(p.src);
+    } catch {}
+
     if (activeTab.value !== index) return;
-    if (res && res.ok === true) clearFallbackTimer();
-    else failAndSwitch(index);
-  });
-}
 
-function scheduleAutoFallback(index) {
-  clearFallbackTimer();
-  const p = players.value[index];
-  if (!p) return;
+    // if (res && res.matched === true) {
+    //   markPlayerReady(index);
+    //   failAndSwitch(index);
+    //   return;
+    // }
 
-  dbg("schedule", {
-    index,
-    type: p.type,
-    url: p.src,
-    isAlloha: isAlloha(p.src),
-  });
-  if (p.type === "sv") {
-    const startWait = () => {
-      svWaitStart.value = performance.now();
-      waitForSvMainIframe(index, 3200).then((found) => {
-        dbg("SV WAIT DONE", {
-          found,
-          elapsed: Math.round(performance.now() - svWaitStart.value),
-        });
-        if (
-          !found &&
-          !svReadyByIndex.value[index] &&
-          !failedPlayers.value[index]
-        ) {
-          // скрываем вкладку даже если она уже не активна
-          safeFail(index);
-        }
-      });
-    };
-
-    if (cdnPlayerLoaded.value) {
-      startWait();
-    } else {
-      const stop = watch(cdnPlayerLoaded, (loaded) => {
-        if (!loaded) return;
-        stop();
-        startWait();
-      });
+    if (res && (res.ok === true || res.ok === null)) {
+      // clearFallbackTimer();
+      markPlayerReady(index);
+      return;
     }
+
+    markPlayerFailed(index);
+  };
+
+  if (isAlloha(p.src)) {
+    runProbe();
     return;
-  } else if (p.type === "kodik") {
-    fallbackTimer = setTimeout(() => {
-      if (activeTab.value !== index) return;
-      const container = document.getElementById("kodik-player");
-      const iframe = container ? container.querySelector("iframe") : null;
-      if (!iframe) safeFail(index);
-    }, 7000);
   }
+
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 500));
+  idle(runProbe);
 }
+
+function handleYoutubeLoad(index) {
+  markPlayerReady(index);
+}
+
+// function scheduleAutoFallback(index) {
+//   clearFallbackTimer();
+//   const p = players.value[index];
+//   if (!p) return;
+
+//   dbg("schedule", {
+//     index,
+//     type: p.type,
+//     url: p.src,
+//     isAlloha: isAlloha(p.src),
+//   });
+
+//   if (p.type === "sv") {
+//     const startWait = () => {
+//       svWaitStart.value = performance.now();
+//       // 1) ждем появления главного iframe
+//       waitForSvMainIframe(index, 4000).then((found) => {
+//         dbg("SV MAIN IFRAME", {
+//           found,
+//           elapsed: Math.round(performance.now() - svWaitStart.value),
+//         });
+
+//         if (
+//           !found &&
+//           !svReadyByIndex.value[index] &&
+//           !failedPlayers.value[index]
+//         ) {
+//           // нет iframe — фейлим
+//           safeFail(index);
+//           return;
+//         }
+
+//         // 2) iframe есть, ждем ready-сообщение еще 4.5s
+//         if (!svReadyByIndex.value[index]) {
+//           svMessageTimer = setTimeout(() => {
+//             if (!svReadyByIndex.value[index] && !failedPlayers.value[index]) {
+//               safeFail(index);
+//             }
+//           }, 4500);
+//         }
+//       });
+//     };
+
+//     if (cdnPlayerLoaded.value) startWait();
+//     else {
+//       const stop = watch(cdnPlayerLoaded, (loaded) => {
+//         if (!loaded) return;
+//         stop();
+//         startWait();
+//       });
+//     }
+//     return;
+//   } else if (p.type === "kodik") {
+//     fallbackTimer = setTimeout(() => {
+//       if (activeTab.value !== index) return;
+//       const container = document.getElementById("kodik-player");
+//       const iframe = container ? container.querySelector("iframe") : null;
+//       if (!iframe) safeFail(index);
+//     }, 12000);
+//   }
+// }
 
 function handleIframeError(index) {
   if (activeTab.value !== index) return;
   const p = players.value[index];
+
   if (p && p.type === "iframe" && isAlloha(p.src)) {
-    // Проверяем сервером: переключаемся только при явном тексте ошибки
     probePlayer(p.src)
       .then((res) => {
-        dbg("onerror", { index, url: p.src, isAlloha: isAlloha(p.src) });
-        dbg("onerror probe", res);
         if (activeTab.value !== index) return;
-        if (res && res.matched === true) failAndSwitch(index);
-        else clearFallbackTimer();
+
+        if (res && res.matched === true) {
+          markPlayerReady(index);
+          // Было: failAndSwitch(index);
+          markPlayerFailed(index);
+        } else {
+          markPlayerReady(index);
+          // clearFallbackTimer();
+        }
       })
       .catch(() => {
-        // Неизвестно → остаёмся на текущем
-        clearFallbackTimer();
+        markPlayerFailed(index);
       });
     return;
   }
-  failAndSwitch(index);
+
+  // markPlayerReady(index);
+  // failAndSwitch(index);
+}
+
+function whenLCP(cb) {
+  try {
+    let fired = false;
+    const done = () => {
+      if (!fired) {
+        fired = true;
+        cb();
+      }
+    };
+    const po = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      if (entries && entries.length) {
+        try {
+          po.disconnect();
+        } catch {}
+        done();
+      }
+    });
+    po.observe({ type: "largest-contentful-paint", buffered: true });
+    setTimeout(done, 1500); // фолбэк, если LCP не пойман
+  } catch {
+    setTimeout(cb, 1500);
+  }
 }
 
 // ...existing imports and code above...
@@ -1321,6 +1694,16 @@ onMounted(() => {
     // precheckIframePlayers(); // ← убрано
     const kdx = getKodikIndex();
     if (kdx >= 0) initKodik(kdx);
+  });
+
+  whenLCP(() => {
+    // после LCP можно прогреть/подгрузить активный плеер, без клика
+    const i = activeTab.value;
+    const p = players.value?.[i];
+    if (p?.type === "sv") {
+      ensureCdnVideoHub(); // загрузит runtime, UI инжектнется по IO (как сейчас)
+    }
+    // если первым идёт iframe — он и так создаётся по шаблону/IO, LCP не трогаем
   });
 
   // previously: immediate watch(activeTab) touching document
@@ -1336,36 +1719,69 @@ onMounted(() => {
         if (player.type === "sv") {
           const containerId = `player_video_${newIndex}`;
           const container = document.getElementById(containerId);
-          if (container && container.innerHTML === "") {
-            const start = () => {
-              const oldScript = container.querySelector("script");
-              if (oldScript) container.removeChild(oldScript);
-              const script = document.createElement("script");
-              // грузим интерфейс плеера отложенно
-              script.src = "/api/cdnvh-playerui.js"; // см. серверный прокси ниже
-              script.defer = true;
-              container.appendChild(script);
+          if (!container) return;
+
+          // гарантируем загрузку runtime (UMD)
+          ensureCdnVideoHub();
+
+          const hasMain = svHasMainIframe(newIndex);
+          const hasUiScript = !!container.querySelector(
+            "script[data-cdnvh-ui]"
+          );
+          if (!hasMain) {
+            const injectUI = () => {
+              if (svHasMainIframe(newIndex)) return;
+              const stale = container.querySelector("script[data-cdnvh-ui]");
+              if (stale && stale.parentNode)
+                stale.parentNode.removeChild(stale);
+              const s = document.createElement("script");
+              s.src = "/api/cdnvh-playerui.js";
+              s.async = true;
+              s.setAttribute("data-cdnvh-ui", "1");
+              container.appendChild(s);
             };
-            if ("IntersectionObserver" in window) {
-              const io = new IntersectionObserver(
-                (entries) => {
-                  if (entries.some((e) => e.isIntersecting)) {
+
+            const startWhenVisible = () => {
+              if ("IntersectionObserver" in window) {
+                let fired = false;
+                const io = new IntersectionObserver(
+                  (entries) => {
+                    if (fired) return;
+                    if (entries.some((e) => e.isIntersecting)) {
+                      fired = true;
+                      io.disconnect();
+                      injectUI();
+                    }
+                  },
+                  { rootMargin: "200px 0px" }
+                );
+                io.observe(container);
+                setTimeout(() => {
+                  if (!fired) {
+                    fired = true;
                     io.disconnect();
-                    start();
+                    injectUI();
                   }
-                },
-                { rootMargin: "200px 0px" }
-              );
-              io.observe(container);
-            } else {
-              // fallback: по клику на таб
-              start();
+                }, 800);
+              } else {
+                injectUI();
+              }
+            };
+
+            if (cdnPlayerLoaded.value) startWhenVisible();
+            else {
+              const stop = watch(cdnPlayerLoaded, (loaded) => {
+                if (!loaded) return;
+                stop();
+                startWhenVisible();
+              });
             }
           }
-        } else if (player.type === "kodik") {
-          initKodik(newIndex);
         }
-        scheduleAutoFallback(newIndex);
+        // else if (player.type === "kodik") {
+        //   initKodik(newIndex);
+        // }
+        // scheduleAutoFallback(newIndex);
       });
     },
     { immediate: true, deep: true }
@@ -1400,7 +1816,7 @@ async function refreshRelatedIfNeeded() {
       const data = await resp.json();
       state.related = data.items || [];
     }
-  } catch (e) { 
+  } catch (e) {
     console.error("Ошибка загрузки похожих:", e);
   }
 }
@@ -1410,10 +1826,27 @@ onMounted(() => {
   refreshRelatedIfNeeded();
 });
 
+onMounted(() => {
+  preconnectForPlayers(players.value);
+});
+
+watch(
+  players,
+  (list) => {
+    preconnectForPlayers(list);
+    const idx = activeTab.value || 0;
+    if (list[idx]?.type === "kodik") nextTick(() => initKodik(idx));
+  },
+  { deep: true /* immediate: false по умолчанию */ }
+);
+
 // Состояние для оценок страницы
 const pageLikes = ref(0);
 const pageDislikes = ref(0);
 const userVote = ref(null);
+const isVotingPage = ref(false);
+const ratingsReady = ref(false);
+let initialRatingsLoad = null;
 
 const calculatedRating = computed(() => {
   const likes = pageLikes.value;
@@ -1471,50 +1904,47 @@ const processedComments = computed(() => {
 
 // Загрузка оценок страницы (сервер → fallback localStorage)
 const loadPageRatings = async () => {
+  // 1) Мгновенно применяем локальное состояние (убирает окно гонки)
   try {
-    const resp = await fetch(`/api/movie-ratings/${props.id}`);
+    const savedVote = localStorage.getItem(`page_vote_${props.id}`);
+    if (savedVote) userVote.value = savedVote;
+    const savedRatings = localStorage.getItem(`page_ratings_${props.id}`);
+    if (savedRatings) {
+      const { likes, dislikes } = JSON.parse(savedRatings);
+      pageLikes.value = likes;
+      pageDislikes.value = dislikes;
+      ratingsReady.value = true; // можно голосовать сразу
+    }
+  } catch {}
+
+  // 2) Затем подтягиваем канонические значения с сервера
+  try {
+    const resp = await fetch(`/api/movie-ratings/${props.id}`, {
+      cache: "no-store",
+    });
     if (resp.ok) {
       const { pageLikes: likes = 0, pageDislikes: dislikes = 0 } =
         await resp.json();
-      pageLikes.value = likes;
-      pageDislikes.value = dislikes;
-    } else {
-      const savedRatings = localStorage.getItem(`page_ratings_${props.id}`);
-      if (savedRatings) {
-        const ratings = JSON.parse(savedRatings);
-        pageLikes.value = ratings.likes;
-        pageDislikes.value = ratings.dislikes;
-      } else {
-        const { likes, dislikes } = calculateInitialRatings(movie.value);
-        pageLikes.value = likes;
-        pageDislikes.value = dislikes;
-        localStorage.setItem(
-          `page_ratings_${props.id}`,
-          JSON.stringify({ likes, dislikes })
-        );
-      }
-    }
-
-    const savedVote = localStorage.getItem(`page_vote_${props.id}`);
-    if (savedVote) userVote.value = savedVote;
-  } catch (error) {
-    console.error("Ошибка загрузки оценок:", error);
-    const savedRatings = localStorage.getItem(`page_ratings_${props.id}`);
-    if (savedRatings) {
-      const ratings = JSON.parse(savedRatings);
-      pageLikes.value = ratings.likes;
-      pageDislikes.value = ratings.dislikes;
-    } else {
-      const { likes, dislikes } = calculateInitialRatings(movie.value);
       pageLikes.value = likes;
       pageDislikes.value = dislikes;
       localStorage.setItem(
         `page_ratings_${props.id}`,
         JSON.stringify({ likes, dislikes })
       );
+    } else if (!ratingsReady.value) {
+      const { likes, dislikes } = calculateInitialRatings(movie.value);
+      pageLikes.value = likes;
+      pageDislikes.value = dislikes;
     }
-    const savedVote = localStorage.getItem(`page_vote_${props.id}`);
-    if (savedVote) userVote.value = savedVote;
+  } catch (error) {
+    console.error("Ошибка загрузки оценок:", error);
+    if (!ratingsReady.value) {
+      const { likes, dislikes } = calculateInitialRatings(movie.value);
+      pageLikes.value = likes;
+      pageDislikes.value = dislikes;
+    }
+  } finally {
+    ratingsReady.value = true;
   }
 };
 
@@ -1544,12 +1974,16 @@ const calculateInitialRatings = (movie) => {
 
 // Голосование за страницу (серверная запись)
 const votePage = async (voteType) => {
+  if (isVotingPage.value || !ratingsReady.value) return; // ждём первичную инициализацию
   const previousVote = userVote.value;
   const newVote = previousVote === voteType ? null : voteType;
+
+  isVotingPage.value = true;
   try {
     const resp = await fetch("/api/vote-page", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      keepalive: true,
       body: JSON.stringify({
         movieId: props.id,
         voteType: newVote,
@@ -1562,7 +1996,6 @@ const votePage = async (voteType) => {
     pageDislikes.value = data.pageDislikes;
     userVote.value = newVote;
 
-    // Сохраняем локально (опционально)
     if (newVote) localStorage.setItem(`page_vote_${props.id}`, newVote);
     else localStorage.removeItem(`page_vote_${props.id}`);
     localStorage.setItem(
@@ -1573,7 +2006,6 @@ const votePage = async (voteType) => {
       })
     );
 
-    // Уведомляем другие вкладки/страницы
     window.dispatchEvent(
       new CustomEvent("ratings-updated", {
         detail: {
@@ -1585,6 +2017,8 @@ const votePage = async (voteType) => {
     );
   } catch (error) {
     console.error("Ошибка голосования:", error);
+  } finally {
+    isVotingPage.value = false;
   }
 };
 
@@ -1694,11 +2128,18 @@ const cancelReply = () => {
   replyToCommentId.value = null;
 };
 
+const isVotingComment = ref({});
+const setVotingComment = (id, val) => {
+  isVotingComment.value = { ...isVotingComment.value, [id]: !!val };
+};
+const isCommentLocked = (id) => !!isVotingComment.value[id];
+
 // Голосование за комментарий
 const voteComment = async (commentId, voteType) => {
   try {
     const comment = comments.value.find((c) => c.id === commentId);
     if (!comment) return;
+    if (isCommentLocked(commentId)) return;
 
     // Создаем уникальный ключ для localStorage
     const voteKey = `comment_vote_${props.id}_${commentId}`;
@@ -1723,9 +2164,12 @@ const voteComment = async (commentId, voteType) => {
 
     // Сохраняем голос через API
     try {
+      setVotingComment(commentId, true);
       const response = await fetch("/api/vote-comment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        cache: "no-store",
         body: JSON.stringify({
           movieId: props.id,
           commentId: commentId,
@@ -1752,6 +2196,8 @@ const voteComment = async (commentId, voteType) => {
 
       comment.userVote = previousVote;
       alert("Ошибка при сохранении голоса. Попробуйте еще раз.");
+    } finally {
+      setVotingComment(commentId, false);
     }
   } catch (error) {
     console.error("Ошибка голосования за комментарий:", error);
@@ -1802,7 +2248,7 @@ const recreateRecaptcha = async () => {
     recaptchaDiv.className = "g-recaptcha";
     recaptchaDiv.setAttribute(
       "data-sitekey",
-      "6LetOK8rAAAAAEH_P1q84u7IV8HbwHgfuh6g4K5w"
+      "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
     );
     recaptchaDiv.setAttribute("data-theme", "light");
     recaptchaDiv.setAttribute("data-language", "ru");
@@ -1814,7 +2260,7 @@ const recreateRecaptcha = async () => {
 
       // Рендерим reCAPTCHA
       window.grecaptcha.render(recaptchaDiv, {
-        sitekey: "6LetOK8rAAAAAEH_P1q84u7IV8HbwHgfuh6g4K5w",
+        sitekey: "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4",
         theme: "light",
         language: "ru",
       });
@@ -1847,38 +2293,116 @@ const waitForRecaptcha = () => {
 onMounted(() => {
   window.addEventListener("message", handleWindowMessage);
   window.addEventListener("message", handleCdnMessage);
-  loadPageRatings();
-  loadComments();
 
-  // если среди players есть SV — заранее прогреваем скрипт
-  if (players.value.some((p) => p.type === "sv")) {
-    ensureCdnVideoHub();
-  }
+  const defer = (fn) =>
+    "requestIdleCallback" in window
+      ? requestIdleCallback(fn, { timeout: 3000 })
+      : setTimeout(fn, 1500);
+
+  defer(() => {
+    initialRatingsLoad = loadPageRatings();
+  });
+  defer(() => {
+    loadComments();
+  });
+
   const kdx = getKodikIndex();
   if (kdx >= 0) initKodik(kdx);
 });
 
-const cdnPlayerLoaded = ref(false);
+const isVotingDisabled = computed(
+  () => isVotingPage.value || !ratingsReady.value
+);
 
-function ensureCdnVideoHub() {
-  if (cdnPlayerLoaded.value) return;
-  const exists = document.querySelector('script[src*="/api/cdnvh-umd.js"]');
-  if (!exists) {
-    const s = document.createElement("script");
-    s.src = "/api/cdnvh-umd.js";
-    s.async = true;
-    s.onload = () => {
-      cdnPlayerLoaded.value = true;
-    };
-    document.head.appendChild(s);
-  } else {
-    cdnPlayerLoaded.value = true;
-  }
+const cdnPlayerLoaded = ref(false);
+let cdnLoadPromise = null;
+
+// безопасно для SSR
+function ensurePreconnect(origin) {
+  if (typeof document === "undefined") return;
+  if (!origin) return;
+  const href = origin.replace(/\/+$/, "");
+  if (document.querySelector(`link[rel="preconnect"][href="${href}"]`)) return;
+  const l = document.createElement("link");
+  l.rel = "preconnect";
+  l.href = href;
+  l.crossOrigin = "";
+  document.head.appendChild(l);
 }
 
-watch(activeTab, (i) => {
-  if (players.value[i]?.type === "sv") ensureCdnVideoHub();
-});
+function preconnectForPlayers(list = []) {
+  if (typeof document === "undefined") return;
+  const origins = Array.from(
+    new Set(
+      (list || [])
+        .filter((p) => p && p.type === "iframe" && p.src)
+        .map((p) => {
+          try {
+            return new URL(p.src).origin;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean)
+    )
+  );
+  origins.forEach(ensurePreconnect);
+}
+
+// и здесь тоже защита на SSR
+function ensureCdnVideoHub() {
+  if (typeof document === "undefined") return;
+  if (cdnPlayerLoaded.value) return;
+
+  const addPre = (href) => {
+    if (!document.querySelector(`link[rel="preconnect"][href="${href}"]`)) {
+      const l = document.createElement("link");
+      l.rel = "preconnect";
+      l.href = href;
+      l.crossOrigin = "anonymous";
+      document.head.appendChild(l);
+    }
+  };
+  addPre("https://player.cdnvideohub.com");
+  addPre("https://plapi.cdnvideohub.com");
+
+  if (document.querySelector('script[src*="/api/cdnvh-umd.js"]')) {
+    cdnPlayerLoaded.value = true;
+    return;
+  }
+
+  const s = document.createElement("script");
+  s.src = "/api/cdnvh-umd.js";
+  s.async = true;
+  s.onload = () => {
+    cdnPlayerLoaded.value = true;
+  };
+  document.head.appendChild(s);
+}
+
+watch(
+  players,
+  (list) => {
+    if (typeof document === "undefined") return; // SSR guard
+    const idx = activeTab.value || 0;
+    const p = list[idx];
+    if (!p) return;
+    if (p.type === "kodik") {
+      nextTick(() => initKodik(idx));
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+watch(
+  () => state.movie && state.movie.id,
+  () => {
+    activeTab.value = 0;
+    isDescriptionExpanded.value = false;
+    hasMeasured.value = false;
+    playerReady.value = {};
+  }
+);
 
 function probeKodikOnInject(index, opts = {}) {
   const container = document.getElementById("kodik-player");
@@ -1919,7 +2443,8 @@ function probeKodikOnInject(index, opts = {}) {
       clearTimeout(noIframeTimer);
       noIframeTimer = null;
     }
-    clearFallbackTimer();
+    // clearFallbackTimer();
+    markPlayerReady(index);
     stop();
   };
 
@@ -1933,6 +2458,7 @@ function probeKodikOnInject(index, opts = {}) {
 }
 
 function initKodik(index) {
+  if (typeof document === "undefined") return;
   const container = document.getElementById("kodik-player");
   if (!container) return;
 
@@ -1978,44 +2504,29 @@ function getKodikIndex() {
   return players.value.findIndex((p) => p.type === "kodik");
 }
 
-const seoDescription = computed(() => {
-  if (!movie.value) return "";
-  const title = movie.value.title;
-  const category = movie.value.category;
-
-  // Подстройте список ключей категорий под ваши реальные значения в movies-data.json
-  const isSerial = category === "serialy" || category === "serials";
-  const isAnime = category === "anime" || category === "animes";
-  const isCartoon =
-    category === "multfilmy" ||
-    category === "multfilm" ||
-    category === "cartoons";
-
-  if (isSerial) {
-    return `На сайте Lordfilms вы можете смотреть ${title} на русском языке бесплатно все сезоны в качестве HD 720p и Full HD 1080p. Начните онлайн просмотр сериала ${title} все серии подряд с русской озвучкой в профессиональном переводе от лучших студий (LostFilm, Кубик в Кубе, NewStudio, ColdFilm, IdeaFilm, Дубляж) или включайте версию с русскими субтитрами. Сериалы на нашем сайте доступны без регистрации и смс. Наш удобный плеер обеспечивает стабильное воспроизведение на любом устройстве: на смартфоне (iOS, Android, Windows Phone), на планшете или Smart TV.`;
-  } else if (isAnime) {
-    return `На сайте Lordfilms вы можете смотреть ${title} на русском языке бесплатно все сезоны в качестве HD 720p и Full HD 1080p. Начните онлайн просмотр аниме ${title} все серии подряд с русской озвучкой в профессиональном переводе от лучших студий (AniLibria, StudioBand, AniDUB, Reanimedia, Студийная банда, Reanimedia) или включайте версию с русскими субтитрами. Аниме на нашем сайте доступны без регистрации и смс. Наш удобный плеер обеспечивает стабильное воспроизведение на любом устройстве: на смартфоне (iOS, Android, Windows Phone), на планшете или Smart TV.`;
-  } else if (isCartoon) {
-    return `На сайте Lordfilms вы можете смотреть ${title} на русском языке бесплатно в качестве HD 720p и Full HD 1080p. Начните онлайн просмотр мультфильма ${title} с русской озвучкой в профессиональном переводе от лучших студий (Мосфильм-Мастер, Пифагор, SDI Media / Blackbird Sound, Невафильм, СВ-Дубль, Amedia, Кириллица, Кравец) или включайте версию с русскими субтитрами. Мультфильмы на нашем сайте доступны без регистрации и смс. Наш удобный плеер обеспечивает стабильное воспроизведение на любом устройстве: на смартфоне (iOS, Android, Windows Phone), на планшете или Smart TV.`;
-  } else {
-    return `На сайте Lordfilms вы можете смотреть ${title} на русском языке бесплатно в качестве HD 720p и Full HD 1080p. Начните онлайн просмотр фильма ${title} с русской озвучкой в профессиональном переводе от лучших студий (Мосфильм-Мастер, Пифагор, SDI Media / Blackbird Sound, Невафильм, СВ-Дубль, Amedia, Кириллица, Кравец) или включайте версию с русскими субтитрами. Фильмы на нашем сайте доступны без регистрации и смс. Наш удобный плеер обеспечивает стабильное воспроизведение на любом устройстве: на смартфоне (iOS, Android, Windows Phone), на планшете или Smart TV.`;
-  }
-});
-
 // Описание: разбиваем по пустым строкам, если нет HTML-версии
 const descriptionParagraphs = computed(() => {
   if (!movie.value) return [];
   if (movie.value.descriptionHtml) return [];
   const text = movie.value.description || "";
-  // Разделяем по двойным переводам строк как по абзацам
+  // Разделяем по двойным переводам строк как по абзацам и убираем ** **
   return text
     .split(/\n\s*\n/)
-    .map((s) => s.trim())
+    .map((s) => stripMdBold(s.trim()))
     .filter(Boolean);
 });
 </script>
 
 <style scoped>
+.movie-descr p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.movie-descr p:last-child {
+  margin-bottom: 0;
+}
+
 .no-movie {
   text-align: center;
   padding: 60px 20px;
@@ -2094,7 +2605,7 @@ body.light-off {
 }
 
 /* Стили для комментариев */
-.content-page__comments {
+.contpage__comments {
   margin-top: 40px;
 }
 .comment-item {
@@ -2187,27 +2698,27 @@ body.light-off {
   border-left: 4px solid #ff6b6b;
 }
 
-.comment__header {
+.coment__header {
   margin-bottom: 15px;
 }
 
-.comment__author {
+.coment__author {
   font-weight: 600;
   color: #333;
 }
 
-.comment__date {
+.coment__date {
   color: #666;
   font-size: 14px;
 }
 
-.comment__text {
+.coment__text {
   line-height: 1.6;
   margin-bottom: 15px;
   color: #333;
 }
 
-.comment__tools {
+.coment__tools {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2224,7 +2735,7 @@ body.light-off {
   text-decoration: underline;
 }
 
-.comment__rating {
+.coment__rating {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2237,7 +2748,7 @@ body.light-off {
   color: #333;
 }
 
-.comment__rating-btn {
+.coment__rating-btn {
   cursor: pointer;
   padding: 5px;
   border-radius: 4px;
@@ -2245,19 +2756,24 @@ body.light-off {
   text-decoration: none;
 }
 
-.comment__rating-btn:hover {
+.coment__rating-btn:hover {
   background: #f5f5f5;
 }
 
-.comment__rating-btn.thelike.voted {
+.coment__rating-btn.thelike.voted {
   color: rgb(70, 209, 70);
 }
-.comment__rating-btn.thedislike.voted {
+.coment__rating-btn.thedislike.voted {
   color: #ff6b6b;
 }
 
-.comment__rating-btn.voted .fal {
+.coment__rating-btn.voted .fal {
   transform: scale(1.1);
+}
+
+.page-rate-btn.is-disabled {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .message-info {
@@ -2268,7 +2784,7 @@ body.light-off {
   text-align: center;
 }
 
-.content-page__comments-info {
+.contpage__comments-info {
   padding: 15px;
   background: #e3f2fd;
   border-radius: 6px;
@@ -2301,4 +2817,55 @@ body.light-off {
   line-height: 1.8;
   overflow-wrap: anywhere; /* перенос длинных слов/URL при необходимости */
 }
+
+.tabs-block__content.video-inside {
+  position: relative;
+}
+
+.player-pane {
+  position: relative;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* .player-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #f5f5f5;
+  background: rgba(14, 14, 14, 0.86);
+  backdrop-filter: blur(4px);
+  z-index: 5;
+  pointer-events: none;
+  text-align: center;
+  font-size: 18px;
+}
+
+.player-loader__spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.14);
+  border-top-color: #38be38;
+  animation: player-loader-spin 0.9s linear infinite;
+} */
+@keyframes player-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.coment__rating-btn.is-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.contpage__main.is-narrow-poster { grid-template-columns: 220px minmax(0, 1fr); }
+@media (min-width: 2000px) { .contpage__main.is-narrow-poster { grid-template-columns: 240px minmax(0, 1fr); } }
+
 </style>

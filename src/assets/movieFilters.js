@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { parseRussianDate, shouldHideByPremiere } from './dateUtils.js'
+import { parseRussianDate } from './dateUtils.js'
 
 // Константы для фильтрации
 export const ASIAN_KEYWORDS = [
@@ -29,8 +29,7 @@ export function isTurkish(countryStr) {
 export function createBaseFilter() {
   return (movie) => {
     if (movie.id === 'index') return false
-    if (shouldHideByPremiere(movie.premiere)) return false
-    
+
     // Фильтрация по наличию IMDb рейтинга
     if (!movie.imdbRating) return false
     

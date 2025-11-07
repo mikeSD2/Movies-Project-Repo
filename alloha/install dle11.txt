@@ -1,0 +1,54 @@
+КОНТАКТЫ ДЛЯ СВЯЗИ:
+
+Наш Telegram-канал с модулями: https://t.me/codescript_shop 
+
+По любым ошибкам модуля пишите нам в Telegram: @Doznet
+
+ИНСТРУКЦИЯ:
+
+1. В файле engine\inc\addnews.php, engine\inc\editnews.php
+
+После строки:
+
+echo $categoryfilter;
+
+Вставьте:
+
+include ENGINE_DIR . '/alloha/parse.php';
+
+2. Загрузите все файлы на сервер. 
+
+3. Выполните запросы в базу данных. Если нужно, измените префикс _dle на свой.
+
+INSERT INTO `dle_admin_sections` (`id`, `name`, `title`, `descr`, `icon`, `allow_groups`) VALUES
+(26,	'alloha',	'DLE Alloha',	'Модуль для автоматического добавления, и обновления фильмов и сериалов сайта DLE по базе alloha',	'',	'1');
+
+
+
+DROP TABLE IF EXISTS `dle_alloha`;
+CREATE TABLE `dle_alloha` (
+  `id` int(20) unsigned NOT NULL AUTO_INCREMENT,
+  `kp_id` int(20) unsigned NOT NULL,
+  `year` int(6) unsigned NOT NULL,
+  `quality` varchar(100) NOT NULL,
+  `news_id` int(12) unsigned NOT NULL DEFAULT '0',
+  `type` varchar(100) NOT NULL,
+  `episode` int(6) unsigned NOT NULL DEFAULT '0',
+  `season` int(6) unsigned NOT NULL,
+  `status` int(20) unsigned NOT NULL DEFAULT '2',
+  `err_time` int(12) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `status` (`status`),
+  KEY `year` (`year`),
+  KEY `episode` (`episode`),
+  KEY `err_time` (`err_time`),
+  KEY `type` (`type`),
+  KEY `kp_id` (`kp_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+4. Настройте крон:
+
+/engine/alloha/grab.php
+
+/engine/alloha/grab.php?type=film и т д.

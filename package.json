@@ -1,7 +1,7 @@
 {
-  "name": "lordfilm-app",
+  "name": "ProsmotrZone-app",
   "version": "1.0.0",
-  "description": "LordFilm - Vue.js приложение с Express API",
+  "description": "ProsmotrZone - Vue.js приложение с Express API",
   "main": "server.js",
   "scripts": {
     "start": "NODE_ENV=production node server.js",
@@ -21,16 +21,20 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jquery": "^3.7.1",
+    "jsdom": "^27.1.0",
+    "pupp": "^0.0.6",
     "sharp": "^0.34.4",
     "vue": "^3.5.20",
     "vue-router": "^4.5.1",
     "vue-virtual-scroller": "^2.0.0-beta.8"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^7.0.2",
     "@playwright/test": "^1.55.0",
     "@vitejs/plugin-vue": "^4.6.2",
     "nodemon": "^3.0.1",
     "terser": "^5.44.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "vite-plugin-purgecss": "^0.2.13"
   }
 }

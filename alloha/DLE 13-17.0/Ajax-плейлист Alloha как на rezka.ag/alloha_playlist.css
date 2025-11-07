@@ -1,0 +1,50 @@
+#lesc{overflow:hidden;padding:0 0 0 3px;cursor:pointer;width:13px;height:13px;top:2px;position:relative;border:none;margin: 0 !important}
+#player{background:#000;min-height:460px}
+.b-player{background:#000;padding-top:10px;position:relative}
+.b-player iframe{overflow:hidden;width: 100% !important}
+.b-player iframe::-webkit-scrollbar{display:block}
+.b-player__restricted{background:#000;height:360px;position:relative}
+.b-player__restricted_string{color:#fff;display:block;font-size:14px;font-weight:bold;margin-top:-30px;position:absolute;top:50%;left:0;text-align:center;text-transform:uppercase;width:100%}
+.b-player__restricted_string a{text-decoration:underline}
+.b-post__lastepisodeout{background:#ccc no-repeat 13px 50%;overflow:hidden;padding: 10px 7px 10px 5px;}
+.b-post__lastepisodeout h2{color:#222;font-size: 14px !important;font-weight:bold;line-height:16px;margin:0 0 0 0}
+#player-loader-overlay{background:#000 url(../images/ajax-loader-big-black.gif) no-repeat 50% 50%;display:none;height: calc(100% - 50px);position:absolute;width:100%}
+.b-translators__block{background:#151515;padding-top:10px;padding-left:10px;padding-bottom:10px;text-align:left !important}
+.b-translators__title{color:#fff;font-size:15px;font-weight:bold}
+.b-translators__title h2,.b-translators__title h3{display:inline}
+.b-translators__list{overflow:hidden;-moz-padding-start:0px;padding-start:0px;-webkit-padding-start:0px;margin:0 0 0 0}
+.b-translator__item{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;background:#2d2d2d;color:#fff;cursor:pointer;float:left;font-size:14px;margin-left: 3px !important;margin-top:3px;overflow:hidden;padding:5px 0 5px 10px;text-overflow:ellipsis;white-space:nowrap;width:32.5%}
+.b-translator__item.single{float:none;display:inline-block;margin-left:0;padding:5px 10px;width:auto}
+.b-translator__item:nth-child(3n +1){margin-left:0px}
+.b-translator__item.active,.b-simple_season__item.active,.b-simple_episode__item.active{background:#5d5d5d !important;cursor:default}
+.b-translator__item:hover,.b-changeplayer__list li:hover,.b-simple_season__item:hover,.b-simple_episode__item:hover{background:#4d4d4d}
+.b-changeplayer__list{overflow:hidden}
+.b-changeplayer__list li{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;background:#2d2d2d;color:#fff;cursor:pointer;float:left;font-size:14px;margin-top:5px;overflow:hidden;padding:5px 10px}
+.b-changeplayer__list li.active{background:#000 !important;cursor:default}
+.b-episodes__wrapper{border-bottom:1px solid #dcdcdc;margin-bottom:18px;-webkit-transition:opacity 0.5s ease;-moz-transition:opacity 0.5s ease;-o-transition:opacity 0.5s ease;transition:opacity 0.5s ease}
+.b-episodes__list{margin-left:-16px;padding:32px 0 15px;-webkit-transition:opacity 0.5s ease;-moz-transition:opacity 0.5s ease;-o-transition:opacity 0.5s ease;transition:opacity 0.5s ease}
+.b-episodes__list li{float:left;margin:0 0 17px 17px}
+.b-episodes__list .resume-main img{background-position:50% 0;background-size:166px}
+.b-episodes__list .string{z-index:1}
+.b-episodes__list .string span{background:#000;padding:2px 4px}
+.b-episodes__list .play{z-index:2}
+.b-simple_seasons__list{margin:0 auto;padding:10px;padding:4px 10px 12px 13px;list-style:none}
+.b-simple_seasons__title{color:#fff;font-size:15px;font-weight:bold;padding-top:10px;padding-left:11px;text-align:left}
+.b-simple_season__item{background:#2d2d2d;color:#fff;cursor:pointer;float:left;font-size:13px;margin: 0 2px 2px 0 !important;min-width:11.8%;padding:5px 7px;text-align:left;list-style: none !important}
+.b-simple_episodes__list{margin:0 auto;padding:10px 10px 12px 13px;text-align:left}
+.b-simple_episode__item{background:#2d2d2d;color:#fff;cursor:pointer;display:inline-block;font-size:13px;margin: 0 2px 2px 0 !important;min-width:11.8%;padding:5px 7px;text-align:left}
+#kodik_player_ajax{min-height:460px}
+#simple-episodes-tabs{white-space:nowrap;overflow:hidden;margin:0 30px 0 30px;display:block;position:relative}
+@media only screen and (max-width: 590px) {
+    #simple-episodes-tabs {-webkit-overflow-scrolling: touch;overflow-x:scroll}
+    #kodik_player_ajax{min-height:300px}
+    #player{background:#000;min-height:300px}
+}
+#simple-episodes-list{-moz-padding-start:0px;padding-start:0px;-webkit-padding-start:0px;text-align:left}
+.b-simple_episode__item{display:inline-block;font-size:11px;background:#242424;color:#F0F0F0;cursor:pointer;padding:5px;margin:0 3px;-webkit-transition:background .3s ease;-moz-transition:-moz-background .3s ease;-o-transition:-o-background .3s ease;transition:background .3s ease;text-align:left}
+.b-simple_episode__item.active{background:#525252 !important;cursor:default}
+.prenext{position:relative}
+.prevpl,.nextpl{position:absolute;top:0px;font-size:xx-large;width:25px;height:20px;color:#D5D9D9;cursor:pointer;font-weight:bold;z-index:999}
+.prevpl{left:0px}
+.nextpl{right:0px}
+#player_wrap.premact{width:100%}

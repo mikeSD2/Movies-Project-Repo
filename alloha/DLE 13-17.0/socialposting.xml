@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dleplugin>
+	<name>DLE SocialPosting + Alloha</name>
+	<description>Интеграция модуля DLE SocialPosting в модуль по базе Alloha</description>
+	<icon></icon>
+	<version>1.0</version>
+	<dleversion>13.0</dleversion>
+	<versioncompare>greater</versioncompare>
+	<upgradeurl></upgradeurl>
+	<filedelete>0</filedelete>
+	<needplugin></needplugin>
+	<mnotice>0</mnotice>
+	<mysqlinstall><![CDATA[]]></mysqlinstall>
+	<mysqlupgrade><![CDATA[]]></mysqlupgrade>
+	<mysqlenable><![CDATA[]]></mysqlenable>
+	<mysqldisable><![CDATA[]]></mysqldisable>
+	<mysqldelete><![CDATA[]]></mysqldelete>
+	<phpinstall><![CDATA[]]></phpinstall>
+	<phpupgrade><![CDATA[]]></phpupgrade>
+	<phpenable><![CDATA[]]></phpenable>
+	<phpdisable><![CDATA[]]></phpdisable>
+	<phpdelete><![CDATA[]]></phpdelete>
+	<notice><![CDATA[]]></notice>
+	<file name="engine/modules/functions.php">
+		<operation action="before">
+			<searchcode><![CDATA[?>]]></searchcode>
+			<replacecode><![CDATA[// DLE SocialPosting
+function updateSocialPosting ($news_id) {
+    global $config, $db;
+    $sqlCategory = $db->super_query( "SELECT category FROM " . PREFIX . "_post WHERE id='{$news_id}'" );
+    $category_list = explode( ",", $sqlCategory['category'] );
+    array_unshift( $category_list, "0" );
+    $sqlExport = array();
+    $sqlPosting = $db->query( "SELECT id FROM " . PREFIX . "_socialposting_conf WHERE category regexp '[[:<:]](" . implode( '|', $category_list ) . ")[[:>:]]' AND activ='1'" );
+    while( $rowP = $db->get_row( $sqlPosting ) ) {
+        $sqlExport[] = "('" . $rowP['id'] . "', '" . $news_id . "', '0')";
+    }
+    if( count( $sqlExport ) > 0 ) {
+        $db->query("DELETE FROM " . PREFIX . "_socialposting_list WHERE `post_id`='" . $news_id . "'" );
+        $db->query("INSERT IGNORE INTO " . PREFIX . "_socialposting_list (`conf_id`, `post_id`, `finished`) VALUES " . implode( ',', $sqlExport ) );
+    }
+    require_once ENGINE_DIR . '/data/config.posting.php';
+    if( $config_posting['cron_posting'] == "off" ) {
+        $config_posting['cron_posting'] = "on";
+        include ENGINE_DIR . "/modules/socialposting/cron.php";
+    }
+}]]></replacecode>
+		</operation>
+	</file>
+</dleplugin>

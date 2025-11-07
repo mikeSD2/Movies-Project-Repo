@@ -1,0 +1,97 @@
+
+ДЛЯ DLE 11x:
+
+Для запуска автообновления фильмов и сериалов установите и запустите крон, например, раз в час:
+
+
+/usr/bin/wget --no-check-certificate -O /dev/null -q"https://kino.com/engine/alloha/grab.php?last"
+
+Для автодобавления фильмов и сериалов по крону поставьте следующие крон-задачи:
+
+https://kino.com/engine/alloha/grab.php
+
+(В зависимости от скорости наполнения ставим, например, раз в 1 мин Для запуска чаще чем раз в минуту, попробуйте создать 12 одинаковых задач, которые запускаются каждую минуту, но для каждой задачи время паузы поставьте с шагом 5.
+
+Например:
+
+/usr/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/alloha/grab.php"
+sleep 5; /ust/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/alloha/grab.php"
+sleep 10; /usr/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/alloha/grab.php"
+sleep 15; /usr/biniwget --no-check-certificate -O /dev/null -q "https://kino.com/engine/alloha/grab.php"
+sleep 55; /usr/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/alloha/grab.php" 
+).
+
+
+ДАЛЕЕ СТАВИМ РАЗ В СУТКИ ПРОВЕРКУ НА НОВИНКИ В БАЗЕ (для проверки обновления с базы Аллоха):
+
+https://kino.com/engine/alloha/grab.php&type=film - в 00:00
+https://kino.com/engine/alloha/grab.php&type=serial - в 04:00
+https://kino.com/engine/alloha/grab.php&type=anime - в 08:00
+https://kino.com/engine/alloha/grab.php&type=animeserial - в 12:00
+https://kino.com/engine/alloha/grab.php&type=tvshow - в 16:00
+
+✅ Дополнительный крон для проверки на дубликаты по ID КиноПоиска/ID Alloha.
+Запрос:
+/engine/ajax/controller.php?mod=alloha&secret_key=ключ&dup
+
+_____________________________________________
+
+ДЛЯ DLE 13-16x
+
+Для защиты от стороннего запуска, кроны запускаются с приставкой &secret_key=пароль, где "пароль" - ваш индивидуальный ключ для запуска крона.
+
+Пароль - придумайте и укажите свой индивидуальный в настройках модуля на первой вкладке, в поле "Секретный ключ для крона". ВАЖНО: используйте только цифры и английские буквы, без символов.
+
+1. Для запуска автообновления фильмов и сериалов установите и запустите крон, например, раз в час:
+
+/usr/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller.php?mod=alloha&last&secret_key=ПАРОЛЬ"
+ 
+2. Для автодобавления фильмов и сериалов по крону поставьте следующие крон-задачи:
+
+https://kino.com/engine/ajax/controller.php?mod=alloha&secret_key=ПАРОЛЬ
+
+(В зависимости от скорости наполнения ставим, например, раз в 1 мин Для запуска чаще чем раз в минуту, попробуйте создать 12 одинаковых задач, которые запускаются каждую минуту, но для каждой задачи время паузы поставьте с шагом 5.
+
+Например:
+
+/usr/bin/wget --no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller.php?mod=alloha&secret_key=ПАРОЛЬ"
+sleep 5; /usr/bin/wget —no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller php?mod=alloha&secret_key=ПАРОЛЬ"
+sleep 10; /usr/bin/wget -no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller. php?mod=alloha&secret_key=ПАРОЛЬ"
+sleep 15; /usr/biniwget -no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller php?mod=alloha&secret_key=ПАРОЛЬ"
+sleep 55; /usr/bin/wget —no-check-certificate -O /dev/null -q "https://kino.com/engine/ajax/controller.php?mod=alloha&secret_key=ПАРОЛЬ" 
+).
+
+
+ДАЛЕЕ СТАВИМ НА РАЗ В СУТКИ ПРОВЕРКУ НА НОВИНКИ В БАЗЕ Alloha:
+
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=film&secret_key=ПАРОЛЬ - в 00:00
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=serial&secret_key=ПАРОЛЬ - в 04:00
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=anime&secret_key=ПАРОЛЬ - в 08:00
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=animeserial&secret_key=ПАРОЛЬ - в 12:00
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=tvshow&secret_key=ПАРОЛЬ - в 16:00
+https://kino.com/engine/ajax/controller.php?mod=alloha&type=trailer&secret_key=ПАРОЛЬ - в 20:00
+
+✅ Дополнительный крон для проверки на дубликаты по ID КиноПоиска/ID Alloha.
+Запрос:
+/engine/ajax/controller.php?mod=alloha&secret_key=ключ&dup
+_____________________________________________
+
+ВАЖНО! ДЛЯ ЗАПУСКА КРОНА ВРУЧНУЮ ЧЕРЕЗ СТРОКУ БРАУЗЕРА: 
+
+Сначала перейдите по ссылкам с &type= :
+
+/engine/ajax/controller.php?mod=alloha&type=film&secret_key=ПАРОЛЬ и тд.
+
+потом по ссылке /engine/ajax/controller.php?mod=alloha&secret_key=ПАРОЛЬ , без &type=
+
+
+
+чат я помню я у тебя спрашивал и ты мне помог в прошлый раз. типа у меня не хочет работать скрипт gettrailers там все время proxies "[2512/59246] Ищу трейлер: 'Азбука цветов' (2013)...
+   -> Поиск по (RU): 'Азбука цветов 2013 официальный трейлер -клип -ost -саундтрек -песня'
+  -> Ошибка при поиске (RU): post() got an unexpected keyword argument 'proxies'
+     Делаю паузу 10 секунд...
+  -> RU результаты не найдены. Пробую оригинальные запросы...
+   -> Поиск по (EN): 'Hanasaku iroha: Home Sweet Home 2013 official trailer -clip -song -music -ost'
+  -> Ошибка при поиске (EN): post() got an unexpected keyword argument 'proxies'
+     Делаю паузу 10 секунд...
+  -> Трейлер не найден.", и тыпа пробовал везде и с рфзными vpn. но ты сказал что дело не в скрипте и не в vpn типа ты дал мне какуюто комманду дам чтото обновляет https взнерщт кажетсья я точно не помню и все заработало. подумай пожалуйста и скажи

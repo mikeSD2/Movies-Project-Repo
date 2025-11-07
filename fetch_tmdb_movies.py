@@ -57,7 +57,7 @@ TV_LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/tv'
 TV_DETAILS_BASE_URL = 'https://api.themoviedb.org/3/tv/'
 JSON_DATA_FILE = 'movies-data.json'
 NDJSON_OUTPUT_FILE = 'movies-data.ndjson'
-UPLOADS_DIR = 'uploads/posts'
+UPLOADS_DIR = 'uploads/media'
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 

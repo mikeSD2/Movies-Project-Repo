@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+import random
 from datetime import datetime
 import calendar
 import asyncio
@@ -11,6 +12,35 @@ import sys
 from collections import deque
 import signal
 import tempfile
+
+from check_players_by_kp import (
+    ALLOHA_URL_TMPL,
+    ATOMICS_URL_TMPL,
+    DEFAULT_REFERER,
+    http_get,
+    analyze_alloha,
+    analyze_atomics,
+    probe_sv,
+    probe_kodik_api,
+)
+
+def _load_env_file(path: str = "config.env"):
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"): 
+                        continue
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        k, v = k.strip(), v.strip()
+                        if k and v and k not in os.environ:
+                            os.environ[k] = v
+    except Exception:
+        pass
+
+_load_env_file()
 
 # --- ГРЕЙСФУЛ ШАТДАУН ---
 shutdown_requested = False
@@ -43,14 +73,14 @@ def append_to_ndjson(filename, item_data):
 
 # Ключи API
 TMDB_API_KEY = '636c87f3e6bbd33eae8ee8265c83082e'
-GEMINI_API_KEY = "AIzaSyCI0qt3OOliBaM_QOztawFqmBMo5AGw_kY"
+GEMINI_API_KEY = "AIzaSyCrgDaMYgIZG-SKxJTJ1ShoE1YaG3mwMSw"
 
 # URL и пути
 LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/movie'
 DETAILS_BASE_URL = 'https://api.themoviedb.org/3/movie/'
 JSON_DATA_FILE = 'movies-data.json'
 NDJSON_OUTPUT_FILE = 'movies-data.ndjson'
-UPLOADS_DIR = 'uploads/posts'
+UPLOADS_DIR = 'uploads/media'
 
 # рядом с остальными URL/путями
 TV_LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/tv'
@@ -94,13 +124,13 @@ COUNTRY_TRANSLATION = {
 
 # Настройки для Gemini API
 MODELS = [
-    "models/gemini-2.0-flash", "models/gemini-2.5-pro", "models/gemini-2.5-flash-lite",
-    "models/gemini-2.5-flash", "models/gemini-2.0-flash-lite"
+    "models/gemini-2.5-pro", "models/gemini-2.5-flash",
+    # "models/gemini-2.5-flash-lite", "models/gemini-2.0-flash", "models/gemini-2.0-flash-lite"
 ]
 current_model_index = 0
 RATE_LIMITS = {
-    "models/gemini-2.5-pro": 5, "models/gemini-2.5-flash": 10, "models/gemini-2.5-flash-lite": 15,
-    "models/gemini-2.0-flash": 15, "models/gemini-2.0-flash-lite": 30,
+    "models/gemini-2.0-pro": 5, "models/gemini-2.5-flash": 10,
+    # "models/gemini-2.5-flash-lite": 15, "models/gemini-2.5-flash": 15, "models/gemini-2.0-flash-lite": 30,
 }
 rate_windows = {idx: deque() for idx in range(len(MODELS))}
 last_429_at = {idx: 0.0 for idx in range(len(MODELS))}
@@ -147,20 +177,47 @@ def wait_for_rate_slot(model_idx: int):
         print(f"    - Достигнут минутный лимит ({rpm} RPM) для {name}. Пауза {sleep_for}с...")
         time.sleep(sleep_for)
 
-def rewrite_description_sync(description: str) -> str | None:
+def rewrite_description_sync(
+    description: str,
+    title: str | None,
+    year: int | None,
+    original_title: str | None,
+    country: str | None,
+    category: str | None,
+) -> str | None:
     """
     Отправляет описание в Gemini API.
     В случае неудачи повторяет попытки, меняя модели, до успешного выполнения.
     Возвращает None, если контент заблокирован API.
     """
     global current_model_index, last_429_at
-    if not description: return ""
+    description = description or ""
+    title_for_prompt = (title or "").strip() or "это произведение"
+    original_parenthetical = f" ({str(original_title).strip()})" if original_title and str(original_title).strip() else ""
+    year_suffix = f" {year} года" if year else ""
+    country_suffix = f", страна: {str(country).strip()}" if country and str(country).strip() else ""
+    category_suffix = f", категория: {str(category).strip()}" if category and str(category).strip() else ""
 
     prompt = (
-        "Перепиши пожалуйста это описание фильма так чтобы оно звучало просто, без эпитетов, метафор и поэтичности. Описание сюжета должно быть в формате или 'Сюжет разворачивается вокруг...' или 'В центре повествования находится...' или 'Это история о...' или 'История вращается вокруг...' или 'Главный герой этой истории ...' и тому подобное. Чтобы было просто, но интригующе чтобы заитересовать человека к просмотру. "
-        "Текст:\n" f'"{description}\n"'
-        "Изо всех сил старайся довести колличество символов до 1000 не выдумывая и не повторяя уже сказанное, но пытаясь писать развернуто чтобы получилось одно целостное описание фильма. Уникальность итогового текста ОБЯЗАТЕЛЬНО должна быть БОЛЕЕ 90% поэтому ВАЖНО чтобы ты старался использовать перефразирование и синонимы (особенно в первом абзаце) где они уместны и не делают текст странным."
-        "Очень важно чтобы ты не давал никаких предисловий по типу 'Вот переписанный текст:' и послесловий к тексту который был тобой переписан, должен быть только переписаный текст согласно тому как я сказал."
+        "Я хочу, чтобы ты переписал предоставленный ниже текст-описание фильма в максимально очеловеченном, но при этом профессиональном и увлекательном стиле.\n"
+        "Главная задача: Достигнуть эффекта 100% human-written текста без использования сленга, ругательств, неуместных вопросов к читателю или неуместно свободных выражений типа 'ну ты понимаешь' или 'короче'.\n"
+        "Примени следующие стилистические изменения:\n"
+        "Упрости синтаксис: Разбей длинные и сложные предложения на более короткие, используя при этом тире, двоеточия и точку с запятой для динамики где это уместно, а не только формальные союзы.\n"
+        "Увеличь вовлеченность: Используй более активные глаголы. Старайся заменять 'мертвые' описания на более живые, но не сленговые, метафоры или идиомы, ТОЛЬКО ЕСЛИ ОНИ ЗВУЧАТ ЕСТЕСТВЕННО И УМЕСТНО (например, вместо 'его жизнь рушится' — 'его жизнь катится в пропасть'; вместо 'втянут в конфликт' — 'оказывается меж двух огней')."
+        "КРИТИЧЕСКИ ВАЖНО: Эти примеры — лишь для иллюстрации стиля. Не используй их в итоговом тексте, чтобы избежать шаблонности. Ищи синонимы и аналогичные по духу, но уникальные выражения."
+        "Опасайся 'псевдо-идиом': Избегай неуклюжих, грамматически неверных или вымученных попыток создать метафору (вроде 'верного плеча, всегда готового подставить его'). Если идиома не приходит на ум естественно и не вписывается в текст гладко, ИСПОЛЬЗУЙ ПРОСТОЕ, НО ЯСНОЕ И СИЛЬНОЕ ПРЕДЛОЖЕНИЕ без нее. Ясность и естественность важнее формального наличия метафоры."
+        "Акцент на последствиях, а не на фактах: Если в сюжете происходит резкий поворотный момент (смерть, катастрофа, внезапный удар), который в исходнике описан сухо ('произошла трагедия'), не пытайся 'драматизировать' само событие ('в их мир врывается...'). Вместо этого, сделай резкий переход и сразу сфокусируйся на том, как это **мгновенно изменило жизнь** персонажей. Покажи 'что было' и 'что стало' после щелчка пальцев."
+        "Введи интонацию: Сделай тон более разговорным и непосредственным, фокусируясь на внутренних переживаниях и желаниях персонажей ('он мечтал о покое' или 'она решила, что с неё хватит').\n"
+        "Убери книжные клише: Избегай слишком формальных фраз типа 'внешне обычный семьянин', 'по мере развития событий' и 'таинственный покровитель'. Заменяй их на более живые, но уместные эквиваленты.\n"
+        "Сохрани структуру: Текст должен быть связным, логичным и не рубленным (не должен выглядеть как набор телеграфных фраз). Он должен читаться как динамичный, но грамотный анонс фильма.\n"
+        f"Вот текст произведения \"{title_for_prompt}\"{original_parenthetical}{year_suffix}{country_suffix}{category_suffix}, который ты должен переписать:\n"
+        f"\"{description}\"\n"
+        "Целевой объем и как его достичь (800-1200 символов).\n"
+        "Если исходный текст слишком короткий, но ты знаешь дополнительную информацию о этом произведении, то смело добавляй ее в описание чтобы дотянуть описание хотя-бы до 800 символов, при этом придерживаясь правил \"человечности\" о которых сказано выше, НО КАТЕГОРИЧЕСКИ ВАЖНО что ты не должен придумывать ничего, используй дополнительную информацию ТОЛЬКО если ты точно знаешь что она точно относиться к ИМЕННО ЭТОМУ произведению. КРИТИЧЕСКИ ВАЖНО чтобы ты не перепутал части франшизы, то есть, например, не используй детали сюжета \"Никто 1\" для описания \"Никто 2\". Тщательно проверяй соответствие года и названия.\n"
+        f"Если исходный текст оказался пустым (\"\") то напиши сам что знаешь о произведении \"{title_for_prompt}\"{original_parenthetical}{year_suffix}{country_suffix}{category_suffix}, опять-таки, придерживаясь всех правил \"человечности\", оформления и т.д., что даны тебе в этом промпте. НЕ ВЫДУМЫВАЙ факты и не путай части франшизы; сверься с годом, оригинальным названием, страной и категорией.\n"
+        "Проверка на 'роботизированность' (Ритм): Это критически важно для 'человечности'. После того, как текст готов, мысленно перечитай его. Если он звучит слишком гладко, 'причёсанно' или монотонно — это плохо. Он будет обнаружен как ИИ. Чтобы избежать этого, ЦЕЛЕНАПРАВЛЕННО ВАРЬИРУЙ РИТМ. Убедись, что в тексте есть 'качели': рядом с длинными, плавными описаниями должны стоять короткие, 'ударные' фразы из 2-5 слов. Используй этот контраст длин и структур, чтобы текст 'дышал'. Живой текст не боится резких точек.\n"
+        "Уникальность: Итоговый текст ОБЯЗАТЕЛЬНО должен быть уникальным (более 90% по сравнению с исходным \"Текстом\"). Для этого используй перефразирование и синонимы, но только там, где они не нарушают правила простоты и естественности.\n"
+        "Оформление: Очень важно: Твой ответ должен содержать ТОЛЬКО итоговый переписанный текст. Категорически запрещено писать любой текст до или после него. Не должно быть предисловий ('Вот переписанный текст:'), разделителей, заголовков ('Переписанный текст:'), послесловий, уточнений, комментариев или любых итоговых вопросов и предложений ('Хотите, я найду...?', 'Могу ли я помочь...?' и т.д.). Только сам текст и ничего кроме него."
     )
     payload = {"contents": [{"parts":[{"text": prompt}]}]}
     headers = {'Content-Type': 'application/json'}
@@ -470,6 +527,56 @@ async def find_kinopoisk_id(movie_info: dict) -> str | None:
             print("  ID не найден в первом раунде, начинаю второй...")
     return None
 
+def check_players_by_kp_availability(kp: str, debug: bool = True) -> bool:
+    """
+    Возвращает True, если тайтл с данным KP ID найден хотя бы в одном из плееров:
+    Alloha, Atomics, SV (cdnvideohub) или Kodik API.
+    """
+    referer = DEFAULT_REFERER
+
+    # Alloha
+    alloha_ok = False
+    try:
+        st, body, err = http_get(ALLOHA_URL_TMPL.format(kp=kp), referer)
+        if not err:
+            alloha_ok = analyze_alloha(st, body).ok
+    except Exception:
+        pass
+
+    # Atomics
+    atomics_ok = False
+    try:
+        st, body, err = http_get(ATOMICS_URL_TMPL.format(kp=kp), referer)
+        if not err:
+            atomics_ok = analyze_atomics(st, body).ok
+    except Exception:
+        pass
+
+    # SV (cdnvideohub) — локальный бэкенд
+    sv_ok = False
+    try:
+        sv_ok = probe_sv(kp, base_url="http://localhost:3002").ok
+    except Exception:
+        pass
+
+    # Kodik API — по токену, если задан
+    kodik_api_ok = False
+    token = os.environ.get("KODIK_API_TOKEN", "")
+    if token:
+        try:
+            kodik_api_ok = probe_kodik_api(kp, token).ok
+        except Exception:
+            pass
+
+    any_ok = alloha_ok or atomics_ok or sv_ok or kodik_api_ok
+    if debug:
+        print(
+            f"    - Проверка плееров: "
+            f"Alloha={alloha_ok}, Atomics={atomics_ok}, SV={sv_ok}, "
+            f"KodikAPI={kodik_api_ok} -> any={any_ok}"
+        )
+    return any_ok
+
 # --- ФУНКЦИИ TMDB И ОБРАБОТКИ ДАННЫХ ---
 
 def fetch_page_current_month(api_key, page, media_type='movie'):
@@ -581,6 +688,20 @@ def slugify(text):
     slug = re.sub(r'[^a-z0-9\s-]', '', translit_text)
     slug = re.sub(r'[\s-]+', '-', slug)
     return slug
+
+
+def generate_prefixed_id(base_slug: str, existing_ids: set[str] | None = None, digits: int = 7) -> str:
+    if not base_slug:
+        raise ValueError("Base slug required for ID generation.")
+    pool = existing_ids or set()
+    lower = 10 ** (digits - 1)
+    upper = (10 ** digits) - 1
+    for _ in range(1000):
+        prefix = str(random.randint(lower, upper))
+        candidate = f"{prefix}-{base_slug}"
+        if candidate not in pool:
+            return candidate
+    raise RuntimeError(f"Не удалось подобрать уникальный ID для '{base_slug}'")
 
 def director_job_weight(member) -> int:
     job = (member.get('job') or '').strip()
@@ -889,14 +1010,12 @@ async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_
         print("    - Дата релиза по TMDb: не указана")
 
     # Шаг 4: Генерируем ID и проверяем на дубликаты
-    slug = slugify(title) or slugify(original_title)
-    if not slug:
+    base_slug = slugify(title) or slugify(original_title)
+    if not base_slug:
         print(f"Не удалось сгенерировать ID для '{title}'. Пропуск.")
         return None
 
-    if slug in existing_slug_ids:
-        print(f"Контент '{title}' ({slug}) уже есть в базе (id). Пропуск.")
-        return None
+    unique_id = generate_prefixed_id(base_slug, existing_slug_ids)
 
     details = get_details(TMDB_API_KEY, item_summary['id'], media_type)
     if not details:
@@ -915,10 +1034,30 @@ async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_
             except ValueError:
                 pass
 
+    # ФИЛЬТР СТРАНЫ: пропускаем произведения из России
+    try:
+        prod_countries = details.get('production_countries') or []
+        origin_countries = details.get('origin_country') or []
+        is_ru_prod = any(
+            ((c.get('iso_3166_1') or '').upper() == 'RU') or
+            ((c.get('name') or '').strip().lower() in ('russia', 'россия'))
+            for c in prod_countries
+        )
+        is_ru_origin = any((oc or '').upper() == 'RU' for oc in origin_countries)
+        if is_ru_prod or is_ru_origin:
+            print(f"Пропуск '{title}': страна Россия.")
+            return None
+    except Exception:
+        pass
+
     transformed = transform_data_pre_checks(details, category, media_type)
-    if not transformed.get('description'):
-        print(f"У '{transformed.get('title')}' отсутствует описание. Пропускаем.")
+    transformed['id'] = unique_id
+    # Страховка: если после трансформации 'country' == 'Россия' — пропускаем
+    if 'россия' in ((transformed.get('country') or '').strip().lower()):
+        print(f"Пропуск '{transformed.get('title')}': страна Россия (после трансформации).")
         return None
+    if not transformed.get('description'):
+        print(f"У '{transformed.get('title')}' отсутствует описание. Запускаем рерайт по метаданным…")
     if not transformed.get('year'):
         print(f"У '{title}' нет года выпуска. Пропускаем.")
         return None
@@ -940,6 +1079,11 @@ async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_
     transformed['kinopoiskId'] = kp_id
     print(f"Найден Kinopoisk ID: {kp_id}")
 
+        # Проверка наличия тайтла в одном из плееров (Alloha/Atomics/SV/Kodik)
+    if not check_players_by_kp_availability(kp_id, debug=True):
+        print(f"Плееры: тайтл с KP {kp_id} не найден ни в одном источнике. Пропуск '{transformed.get('title')}'.")
+        return None
+
     original_desc = transformed.get('description')
     
     print("Переписываем описание...")
@@ -951,7 +1095,15 @@ async def process_item(item_summary, media_type, existing_slug_ids, existing_kp_
             break
             
         print(f"  - Попытка рерайта #{attempt}/{max_rewrite_retries}...")
-        desc_candidate = await asyncio.to_thread(rewrite_description_sync, original_desc)
+        desc_candidate = await asyncio.to_thread(
+            rewrite_description_sync,
+            original_desc,
+            transformed.get('title'),
+            transformed.get('year'),
+            transformed.get('originalTitle'),
+            transformed.get('country'),
+            transformed.get('category'),
+        )
 
         if desc_candidate is None: # Контент заблокирован API
             print(f"    - Контент заблокирован API. Рерайт невозможен.")

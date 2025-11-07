@@ -5,12 +5,21 @@ const fsSync = require("fs");
 const path = require("path");
 const cors = require("cors");
 const axios = require("axios");
+const Critters = require("critters");
 const compression = require("compression");
 
 async function createServerApp() {
   const app = express();
+  app.use((req, res, next) => {
+    if (process.env.BLOCK_INDEXING === "true") {
+      res.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
+    next();
+  });
   const PORT = process.env.SERVER_PORT || 3000;
-  const BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+  const RAW_BASE_URL =
+    process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+  const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
   const isProduction = process.env.NODE_ENV === "production";
 
   // SSR setup
@@ -81,101 +90,136 @@ async function createServerApp() {
     });
     return links;
   }
-  
+
   // Нормализация жанров: сводим регистр/число/варианты к каноническому виду
-function normalizeGenreLabel(s) {
-  const key = String(s || '').trim().toLowerCase();
+  function normalizeGenreLabel(s) {
+    const key = String(s || "")
+      .trim()
+      .toLowerCase();
 
-  const MAP = {
-    'триллер': 'Триллер',
-    'триллеры': 'Триллер',
+    const MAP = {
+      триллер: "Триллер",
+      триллеры: "Триллер",
 
-    'ужасы': 'Ужасы',
-    'ужас': 'Ужасы',
-    'хоррор': 'Ужасы',
-    'horror': 'Ужасы',
+      ужасы: "Ужасы",
+      ужас: "Ужасы",
+      хоррор: "Ужасы",
+      horror: "Ужасы",
 
-    'комедия': 'Комедия',
-    'комедии': 'Комедия',
+      комедия: "Комедия",
+      комедии: "Комедия",
 
-    'драма': 'Драма',
-    'драмы': 'Драма',
+      драма: "Драма",
+      драмы: "Драма",
 
-    'детектив': 'Детектив',
-    'детективы': 'Детектив',
+      детектив: "Детектив",
+      детективы: "Детектив",
 
-    'детский': 'Детский',
-    'детские': 'Детский',
+      детский: "Детский",
+      детские: "Детский",
 
-    'фантастика': 'Фантастика',
-    'sci-fi': 'Фантастика',
-    'научная фантастика': 'Фантастика',
+      фантастика: "Фантастика",
+      "sci-fi": "Фантастика",
+      "научная фантастика": "Фантастика",
 
-    'фэнтези': 'Фэнтези',
-    'фентези': 'Фэнтези',
+      фэнтези: "Фэнтези",
+      фентези: "Фэнтези",
 
-    'боевик': 'Боевик',
-    'боевики': 'Боевик',
+      боевик: "Боевик",
+      боевики: "Боевик",
 
-    'приключения': 'Приключения',
-    'приключение': 'Приключения',
+      приключения: "Приключения",
+      приключение: "Приключения",
 
-    'мелодрама': 'Мелодрама',
-    'мелодрамы': 'Мелодрама',
+      мелодрама: "Мелодрама",
+      мелодрамы: "Мелодрама",
 
-    'криминал': 'Криминал',
+      криминал: "Криминал",
 
-    'история': 'История',
-    'исторический': 'История',
-    'исторические': 'История',
+      история: "История",
+      исторический: "История",
+      исторические: "История",
 
-    'семейный': 'Семейный',
-    'семейные': 'Семейный',
+      семейный: "Семейный",
+      семейные: "Семейный",
 
-    'спорт': 'Спорт',
-    'музыка': 'Музыка',
-    'аниме': 'Аниме',
-    'мультфильмы': 'Мультфильмы',
-    'мультфильм': 'Мультфильмы',
-    'дорама': 'Дорамы',
-    'дорамы': 'Дорамы',
-    'турецкие сериалы': 'Турецкие сериалы',
-  };
+      военный: "Военный",
+      военные: "Военный",
+      военная: "Военный",
+      военное: "Военный",
+      war: "Военный",
+      military: "Военный",
 
-  if (MAP[key]) return MAP[key];
+      биографии: "Биография",
+      биографические: "Биография",
 
-  // Фолбэк: просто делаем "Первая буква заглавная", остальное нижний регистр
-  return key ? key[0].toUpperCase() + key.slice(1) : '';
-}
+      вестерны: "Вестерн",
 
-function normalizeMovieGenres(list) {
-  const arr = Array.isArray(list) ? list : [];
-  const out = [];
-  const seen = new Set();
-  for (const g of arr) {
-    const canon = normalizeGenreLabel(g);
-    if (canon && !seen.has(canon)) {
-      seen.add(canon);
-      out.push(canon);
+      документальный: "Документальные",
+
+      мюзикл: "Мюзиклы",
+      музыка: "Мюзиклы",
+
+      спортивные: "Спорт",
+      спортивный: "Спорт",
+      sport: "Спорт",
+      sports: "Спорт",
+      cпортивные: "Спорт", // латинская 'c' в начале
+
+      детское: "Детский",
+
+      экшен: "Боевик",
+
+      пародия: "Пародия",
+      короткометражка: "Короткометражка",
+      мультсериал: "Мультсериал",
+
+      вестерн: "Вестерн", // вместе с уже существующим 'вестерны'
+      биография: "Биография",
+
+      спорт: "Спорт",
+      аниме: "Аниме",
+      мультфильмы: "Мультфильмы",
+      мультфильм: "Мультфильмы",
+      дорама: "Дорамы",
+      дорамы: "Дорамы",
+      "турецкие сериалы": "Турецкие сериалы",
+    };
+
+    if (MAP[key]) return MAP[key];
+
+    // Фолбэк: просто делаем "Первая буква заглавная", остальное нижний регистр
+    return key ? key[0].toUpperCase() + key.slice(1) : "";
+  }
+
+  function normalizeMovieGenres(list) {
+    const arr = Array.isArray(list) ? list : [];
+    const out = [];
+    const seen = new Set();
+    for (const g of arr) {
+      const canon = normalizeGenreLabel(g);
+      if (canon && !seen.has(canon)) {
+        seen.add(canon);
+        out.push(canon);
+      }
     }
+    return out;
   }
-  return out;
-}
 
-function hasGenreIntersection(a, b) {
-  const A = new Set(normalizeMovieGenres(a));
-  for (const g of normalizeMovieGenres(b)) {
-    if (A.has(g)) return true;
+  function hasGenreIntersection(a, b) {
+    const A = new Set(normalizeMovieGenres(a));
+    for (const g of normalizeMovieGenres(b)) {
+      if (A.has(g)) return true;
+    }
+    return false;
   }
-  return false;
-}
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-if (isProduction) {
-  app.use(compression());
-}
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
+  if (isProduction) {
+    app.use(compression());
+  }
 
   // Статические файлы для production (если не в development режиме)
   if (isProduction) {
@@ -197,7 +241,8 @@ if (isProduction) {
   }
 
   // Путь к файлу с данными
-  const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "movies-data.json"); 
+  const DATA_FILE =
+    process.env.DATA_FILE || path.join(__dirname, "movies-data.json");
   // Серверные (только backend) хранилища, чтобы не триггерить HMR фронтенда
   const DATA_DIR = path.join(__dirname, "server-data");
   const COMMENTS_FILE = path.join(DATA_DIR, "comments-store.json");
@@ -237,10 +282,6 @@ if (isProduction) {
     const yesterdayStart = new Date(todayStart);
     yesterdayStart.setDate(todayStart.getDate() - 1);
     return date >= yesterdayStart;
-  }
-  function isRecentPremiere(movie) {
-    const d = parseRussianPremiere(movie?.premiere);
-    return !!(d && isTodayOrYesterday(d));
   }
   function isHidden(movie) {
     return !!(movie && movie.hidden);
@@ -344,6 +385,23 @@ if (isProduction) {
     };
     return [...list].sort((a, b) => toTime(b) - toTime(a)).slice(0, count);
   }
+  function upsertPreconnects(html, origins = []) {
+    const exists = (o) =>
+      new RegExp(
+        `<link\\s+rel=["']preconnect["'][^>]*href=["']${o.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        )}["']`,
+        "i"
+      ).test(html);
+    const tags = origins
+      .filter(Boolean)
+      .filter((o) => !exists(o))
+      .map((o) => `<link rel="preconnect" href="${o}" crossorigin>`)
+      .join("\n  ");
+    if (!tags) return html;
+    return html.replace("</head>", `  ${tags}\n</head>`);
+  }
   function buildCategoryFeed(data, opts) {
     const {
       name,
@@ -359,23 +417,36 @@ if (isProduction) {
     } = opts;
 
     const movies = (data?.movies || []).filter(
-      (m) =>
-        m.category === name &&
-        m.id !== "index" &&
-        !isRecentPremiere(m) &&
-        !isHidden(m)
+      (m) => m.category === name && m.id !== "index" && !isHidden(m)
     );
 
     const availableYears = [
       ...new Set(movies.map((m) => m.year).filter(Boolean)),
     ].sort((a, b) => b - a);
-    
+
+    const EXCLUDED_GENRES = new Set(
+      [
+        "Фильмы 2025 года",
+        "Фильм-нуар",
+        "Сверхъестественное",
+        "Молодость",
+        "Концерт",
+        "Фильмы",
+        // добавляйте свои исключения тут
+      ].map(normalizeGenreLabel)
+    );
+
     const availableGenres = Array.from(
       movies.reduce((acc, m) => {
-        normalizeMovieGenres(m.genres).forEach((g) => acc.add(g));
+        normalizeMovieGenres(m.genres)
+          .filter((g) => !EXCLUDED_GENRES.has(g))
+          .forEach((g) => acc.add(g));
         return acc;
       }, new Set())
-    ).sort();
+    )
+      .filter((g) => !(name === "anime" && g === "Аниме"))
+      .filter((g) => !(name === "multfilmy" && g === "Мультфильмы"))
+      .sort();
 
     let filtered = [...movies];
 
@@ -391,7 +462,9 @@ if (isProduction) {
       filtered = filtered.filter((m) => String(m.year) === String(year));
     if (genre) {
       const needle = normalizeGenreLabel(String(genre));
-      filtered = filtered.filter((m) => normalizeMovieGenres(m.genres).includes(needle));
+      filtered = filtered.filter((m) =>
+        normalizeMovieGenres(m.genres).includes(needle)
+      );
     }
     if (country)
       filtered = filtered.filter((m) =>
@@ -404,7 +477,8 @@ if (isProduction) {
         const t = m.translation;
         const needle = String(translation).toLowerCase();
         if (!t) return false;
-        if (Array.isArray(t)) return t.some((x) => String(x).toLowerCase().includes(needle));
+        if (Array.isArray(t))
+          return t.some((x) => String(x).toLowerCase().includes(needle));
         return String(t).toLowerCase().includes(needle);
       });
     if (actor)
@@ -488,23 +562,30 @@ if (isProduction) {
     if (!movie || isHidden(movie)) return null;
 
     const categories = data?.categories || {};
-    const related = (data?.movies || [])
-      .filter(
-        (m) =>
-          m.id !== movie.id &&
-          m.category === movie.category &&
-          hasGenreIntersection(m.genres, movie.genres) &&
-          !isHidden(m)
-      )
-      .slice(0, 6)
-      .map(categoryCardFields);
+
+    let related = [];
+    if (relatedMapCache && relatedMapCache[movie.id]) {
+      related = mapIdsToCards(data, relatedMapCache[movie.id]);
+    }
+    if (!related.length) {
+      related = (data?.movies || [])
+        .filter(
+          (m) =>
+            m.id !== movie.id &&
+            m.category === movie.category &&
+            hasGenreIntersection(m.genres, movie.genres) &&
+            !isHidden(m)
+        )
+        .slice(0, 6)
+        .map(categoryCardFields);
+    }
 
     return { movie, categories, related };
   }
 
   function buildHomeFeed(data) {
     const all = (data?.movies || []).filter(
-      (m) => m.id !== "index" && !isRecentPremiere(m) && !isHidden(m)
+      (m) => m.id !== "index" && !isHidden(m)
     );
     const allowed = all.filter((m) => passPopularity(m));
     const allowedDoramas = all.filter((m) => passPopularity(m, "doramas"));
@@ -560,7 +641,7 @@ if (isProduction) {
     { limit = 24, offset = 0, type = "all" } = {}
   ) {
     let list = (data?.movies || []).filter(
-      (m) => m.id !== "index" && ratingOf(m) > 0 && !isRecentPremiere(m) && !isHidden(m)
+      (m) => m.id !== "index" && ratingOf(m) > 0 && !isHidden(m)
     );
     switch (type) {
       case "filmy":
@@ -607,7 +688,7 @@ if (isProduction) {
   function ssrKey(url) {
     return `${url}#${lastModifiedTime || 0}`;
   }
-  
+
   // вместо хранения только html:
   function setSsrToCache(url, html, status = 200) {
     const k = ssrKey(url);
@@ -617,7 +698,7 @@ if (isProduction) {
   function getSsrFromCache(url) {
     const k = ssrKey(url);
     const rec = ssrCache.get(k);
-    if (rec && (Date.now() - rec.ts) < SSR_TTL_MS) return rec;
+    if (rec && Date.now() - rec.ts < SSR_TTL_MS) return rec;
     if (rec) ssrCache.delete(k);
     return null;
   }
@@ -673,7 +754,12 @@ if (isProduction) {
     const cached = categoryFeedCache.get(key);
     if (cached && cached.mtime === lastModifiedTime) return cached.data;
     const feed = buildCategoryFeed(data, opts);
-    setWithCap(categoryFeedCache, key, { mtime: lastModifiedTime, data: feed }, MAX_CATEGORY_CACHE);
+    setWithCap(
+      categoryFeedCache,
+      key,
+      { mtime: lastModifiedTime, data: feed },
+      MAX_CATEGORY_CACHE
+    );
     return feed;
   }
 
@@ -684,55 +770,86 @@ if (isProduction) {
       return cached.data;
     }
     const feed = buildTopFeedPaged(data, options);
-    setWithCap(topFeedCache, key, { mtime: lastModifiedTime, data: feed }, MAX_TOP_CACHE);
+    setWithCap(
+      topFeedCache,
+      key,
+      { mtime: lastModifiedTime, data: feed },
+      MAX_TOP_CACHE
+    );
     return feed;
   }
 
-// put this near other cache vars
-let dataLoadPromise = null;
+  // put this near other cache vars
+  let dataLoadPromise = null;
 
-async function readData() {
-  try {
-    const stats = await fs.stat(DATA_FILE);
+  async function readData() {
+    try {
+      const stats = await fs.stat(DATA_FILE);
 
-    // Cache hit
-    if (moviesDataCache && lastModifiedTime === stats.mtimeMs) {
-      return moviesDataCache;
-    }
+      // Cache hit
+      if (moviesDataCache && lastModifiedTime === stats.mtimeMs) {
+        return moviesDataCache;
+      }
 
-    // If a load is already in flight, wait for it
-    if (dataLoadPromise) {
+      // If a load is already in flight, wait for it
+      if (dataLoadPromise) {
+        return await dataLoadPromise;
+      }
+
+      // Start a single load for all concurrent callers
+      dataLoadPromise = (async () => {
+        console.log(
+          moviesDataCache
+            ? "movies-data.json changed, reloading cache..."
+            : "Loading movies-data.json into cache..."
+        );
+        const raw = await fs.readFile(DATA_FILE, "utf8");
+        const parsed = JSON.parse(raw);
+        moviesDataCache = parsed;
+        lastModifiedTime = stats.mtimeMs;
+        dataLoadPromise = null;
+        return moviesDataCache;
+      })();
+
       return await dataLoadPromise;
-    }
-
-    // Start a single load for all concurrent callers
-    dataLoadPromise = (async () => {
-      console.log(
-        moviesDataCache
-          ? "movies-data.json changed, reloading cache..."
-          : "Loading movies-data.json into cache..."
-      );
-      const raw = await fs.readFile(DATA_FILE, "utf8");
-      const parsed = JSON.parse(raw);
-      moviesDataCache = parsed;
-      lastModifiedTime = stats.mtimeMs;
+    } catch (error) {
       dataLoadPromise = null;
-      return moviesDataCache;
-    })();
-
-    return await dataLoadPromise;
-  } catch (error) {
-    dataLoadPromise = null;
-    if (error?.code === "ENOENT") {
-      console.warn("movies-data.json not found at:", DATA_FILE);
-    } else {
-      console.error("Ошибка чтения файла:", error);
+      if (error?.code === "ENOENT") {
+        console.warn("movies-data.json not found at:", DATA_FILE);
+      } else {
+        console.error("Ошибка чтения файла:", error);
+      }
+      moviesDataCache = null;
+      lastModifiedTime = null;
+      return null;
     }
-    moviesDataCache = null;
-    lastModifiedTime = null;
-    return null;
   }
-}
+  // server.js
+  const RELATED_MAP_FILE = path.join(DATA_DIR, "related-map.json");
+  let relatedMapCache = null;
+  let relatedMapMtime = null;
+  let relatedMapLoadPromise = null;
+
+  async function readRelatedMap() {
+    try {
+      const stats = await fs.stat(RELATED_MAP_FILE);
+      if (relatedMapCache && relatedMapMtime === stats.mtimeMs)
+        return relatedMapCache;
+      if (relatedMapLoadPromise) return await relatedMapLoadPromise;
+      relatedMapLoadPromise = (async () => {
+        const raw = await fs.readFile(RELATED_MAP_FILE, "utf8");
+        relatedMapCache = JSON.parse(raw);
+        relatedMapMtime = stats.mtimeMs;
+        relatedMapLoadPromise = null;
+        return relatedMapCache;
+      })();
+      return await relatedMapLoadPromise;
+    } catch {
+      relatedMapLoadPromise = null;
+      relatedMapCache = relatedMapCache || {};
+      return relatedMapCache;
+    }
+  }
 
   // Хелперы для серверных стораджей
   async function ensureDataDir() {
@@ -749,6 +866,15 @@ async function readData() {
     } catch (error) {
       return fallbackValue;
     }
+  }
+
+  function mapIdsToCards(data, ids) {
+    const byId = new Map((data?.movies || []).map((m) => [m.id, m]));
+    return (ids || [])
+      .map((id) => byId.get(id))
+      .filter((m) => m && !isHidden(m))
+      .slice(0, 6)
+      .map(categoryCardFields);
   }
 
   async function writeStore(filePath, data) {
@@ -770,7 +896,10 @@ async function readData() {
     return html.replace(
       /<link\s+rel=["']stylesheet["'][^>]*href=["'](\/assets\/[^"']+\.css)["'][^>]*>\s*/gi,
       (m, href) => {
-        if (!keptOnce) { keptOnce = true; return m; }
+        if (!keptOnce) {
+          keptOnce = true;
+          return m;
+        }
         const hasCross = /crossorigin/i.test(m) ? " crossorigin" : "";
         const mediaMatch = m.match(/\smedia=["']([^"']+)["']/i);
         const mediaAttr = mediaMatch ? ` media="${mediaMatch[1]}"` : "";
@@ -866,13 +995,185 @@ async function readData() {
     return html.replace("</head>", `${preload}\n</head>`);
   }
 
+  // Простой кэш, чтобы не перечитывать файл каждый раз
+  const kodikUrlCache = new Map();
+  const KODIK_BIG_FILE = path.join(
+    __dirname,
+    "movies-data-without-pop-pretty-updated.json"
+  );
+
+  app.get("/api/probe-sv", async (req, res) => {
+    try {
+      const kp = String(req.query.kp || "");
+      const publisherId = String(req.query.publisherId || "79");
+      if (!kp) return res.status(400).json({ ok: false, error: "missing kp" });
+
+      const { JSDOM } = require("jsdom");
+      const dom = new JSDOM(
+        `<!doctype html><html><body><div id="root"></div></body></html>`,
+        {
+          url: BASE_URL,
+          runScripts: "outside-only",
+          pretendToBeVisual: true,
+        }
+      );
+      const { window } = dom;
+      const { document } = window;
+
+      // Полифилы для среды выполнения плеера
+      const { TextDecoder, TextEncoder } = require("util");
+      window.TextDecoder = window.TextDecoder || TextDecoder;
+      window.TextEncoder = window.TextEncoder || TextEncoder;
+      globalThis.TextDecoder = globalThis.TextDecoder || TextDecoder;
+      globalThis.TextEncoder = globalThis.TextEncoder || TextEncoder;
+
+      window.atob =
+        window.atob ||
+        ((s) => Buffer.from(String(s), "base64").toString("binary"));
+      window.btoa =
+        window.btoa ||
+        ((s) => Buffer.from(String(s), "binary").toString("base64"));
+
+      const nodeCrypto = require("crypto");
+      window.crypto = window.crypto || nodeCrypto.webcrypto;
+      globalThis.crypto = window.crypto;
+
+      window.self = window;
+
+      window.IntersectionObserver = class {
+        constructor() {}
+        observe() {}
+        disconnect() {}
+      };
+      window.MutationObserver = class {
+        constructor() {}
+        observe() {}
+        disconnect() {}
+      };
+      window.requestAnimationFrame = (cb) => setTimeout(cb, 16);
+
+      // Грузим UMD и UI (оба нужны)
+      const [umd, ui] = await Promise.all([
+        axios.get(`${BASE_URL}/api/cdnvh-umd.js`, {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0", Referer: BASE_URL },
+          responseType: "text",
+          validateStatus: () => true,
+        }),
+        axios.get(`${BASE_URL}/api/cdnvh-playerui.js`, {
+          timeout: 15000,
+          headers: { "User-Agent": "Mozilla/5.0", Referer: BASE_URL },
+          responseType: "text",
+          validateStatus: () => true,
+        }),
+      ]);
+      if (umd.status >= 400 || !umd.data)
+        return res.json({
+          ok: false,
+          error: "umd-fetch-failed",
+          status: umd.status,
+        });
+      if (ui.status >= 400 || !ui.data)
+        return res.json({
+          ok: false,
+          error: "ui-fetch-failed",
+          status: ui.status,
+        });
+
+      window.eval(umd.data);
+      window.eval(ui.data);
+
+      // Создаём элемент плеера
+      const el = document.createElement("video-player");
+      el.setAttribute("data-publisher-id", publisherId);
+      el.setAttribute("data-title-id", kp);
+      el.setAttribute("data-aggregator", "kp");
+      el.setAttribute("is-show-banner", "false");
+      document.getElementById("root").appendChild(el);
+
+      // Поиск iframe внутри shadowRoot или документа
+      function findMainIframe() {
+        const vp = document.querySelector("video-player");
+        const roots = [];
+        if (vp && vp.shadowRoot) roots.push(vp.shadowRoot);
+        roots.push(document);
+        for (const root of roots) {
+          const ifr = root.querySelector(
+            'iframe.vk-player-iframe, iframe[src*="vk.com"], iframe[src*="cdnvideohub"], iframe[src*="vkvideo"]'
+          );
+          if (ifr) return ifr;
+        }
+        return null;
+      }
+
+      const started = Date.now();
+      let foundSrc = null;
+      async function poll(maxMs = 6000) {
+        while (Date.now() - started < maxMs) {
+          const ifr = findMainIframe();
+          if (ifr && ifr.getAttribute("src")) {
+            foundSrc = ifr.getAttribute("src");
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      await poll(6000);
+
+      if (!foundSrc) return res.json({ ok: false, reason: "no-main-iframe" });
+
+      const probe = await axios.get(`${BASE_URL}/api/probe-player`, {
+        params: { url: foundSrc, debug: "1" },
+        timeout: 10000,
+        validateStatus: () => true,
+      });
+
+      res.json({
+        ok: !!(probe.data || {}).ok,
+        iframe: foundSrc,
+        probe: probe.data || {},
+      });
+    } catch (e) {
+      res.json({ ok: false, error: e?.message || "probe-sv-failed" });
+    }
+  });
+
+  // GET /api/kodik-url/:id — достаёт kodikPlayer из большого файла по id
+  app.get("/api/kodik-url/:id", async (req, res) => {
+    try {
+      const id = String(req.params.id);
+      if (!id) return res.status(400).json({ error: "missing id" });
+
+      if (kodikUrlCache.has(id)) {
+        return res.json({ url: kodikUrlCache.get(id) });
+      }
+
+      const raw = await fs.readFile(KODIK_BIG_FILE, "utf8");
+
+      // Ищем блок по id и берем ближайший kodikPlayer
+      const needle = `"id": "${id}"`;
+      const pos = raw.indexOf(needle);
+      if (pos === -1) return res.status(404).json({ error: "not_found" });
+
+      const slice = raw.slice(pos, pos + 8000); // локальный отрезок после id
+      const m = slice.match(/"kodikPlayer"\s*:\s*"([^"]+)"/);
+      if (!m) return res.status(404).json({ error: "no_kodik_url" });
+
+      const url = m[1];
+      kodikUrlCache.set(id, url);
+      res.json({ url });
+    } catch (e) {
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
   app.get("/api/movies-data", async (req, res) => {
     try {
       if (tryConditional304(req, res)) return;
       const data = await readData();
       const includeHidden = String(req.query.includeHidden || "") === "1";
       const movies = includeHidden
-        ? (data.movies || [])
+        ? data.movies || []
         : (data.movies || []).filter((m) => !m.hidden);
       setDataCacheHeaders(res, 60);
       res.json({ ...data, movies });
@@ -887,25 +1188,28 @@ async function readData() {
       if (!q) return res.json([]);
       if (tryConditional304(req, res)) return;
       setDataCacheHeaders(res, 30);
-  
+
       const cached = searchCache.get(q);
-      if (cached && (Date.now() - cached.ts) < SEARCH_TTL_MS && cached.mtime === lastModifiedTime) {
+      if (
+        cached &&
+        Date.now() - cached.ts < SEARCH_TTL_MS &&
+        cached.mtime === lastModifiedTime
+      ) {
         return res.json(cached.data);
       }
-  
+
       const data = await readData();
-  
+
       const norm = (v) => String(v ?? "").toLowerCase();
       const normActors = (v) =>
         Array.isArray(v)
           ? v.join(", ").toLowerCase()
           : String(v ?? "").toLowerCase();
-  
+
       const found = (data.movies || [])
         .filter(
           (m) =>
             m.id !== "index" &&
-            !isRecentPremiere(m) &&
             !isHidden(m) &&
             (norm(m.title).includes(q) ||
               norm(m.originalTitle).includes(q) ||
@@ -922,8 +1226,13 @@ async function readData() {
           kpRating: m.kpRating,
           imdbRating: m.imdbRating,
         }));
-  
-      setWithCap(searchCache, q, { ts: Date.now(), data: found, mtime: lastModifiedTime }, MAX_SEARCH_CACHE);
+
+      setWithCap(
+        searchCache,
+        q,
+        { ts: Date.now(), data: found, mtime: lastModifiedTime },
+        MAX_SEARCH_CACHE
+      );
       res.json(found);
     } catch (e) {
       res.status(500).json([]);
@@ -956,6 +1265,7 @@ async function readData() {
     try {
       if (tryConditional304(req, res)) return;
       const data = await readData();
+      await readRelatedMap(); // добавить эту строку
       const payload = buildMoviePayload(data, String(req.params.id));
       if (!payload) return res.status(404).json({ error: "not_found" });
       setDataCacheHeaders(res, 60);
@@ -971,14 +1281,14 @@ async function readData() {
       if (tryConditional304(req, res)) return;
       const name = String(req.query.name || "").trim();
       if (!name) return res.status(400).json({ error: "missing name" });
-  
+
       const limit = Math.max(
         1,
         Math.min(200, parseInt(req.query.limit, 10) || 24)
       );
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const sort = String(req.query.sort || "year");
-  
+
       const opts = {
         name,
         page,
@@ -992,7 +1302,7 @@ async function readData() {
         special: req.query.special,
         home: String(req.query.home || "") === "1",
       };
-  
+
       const feed = getCategoryFeed(data, opts);
       setDataCacheHeaders(res, 60);
       res.json(feed);
@@ -1020,11 +1330,12 @@ async function readData() {
     }
   });
 
-  // Related movies for a given id (lightweight for hard-reload cases)
+  // Related movies for a given id (prefer static map)
   app.get("/api/related/:id", async (req, res) => {
     try {
       if (tryConditional304(req, res)) return;
       const data = await readData();
+      await readRelatedMap(); // добавить эту строку
       const id = String(req.params.id);
       const list = data?.movies || [];
       const cur = list.find((m) => m.id === id);
@@ -1032,27 +1343,33 @@ async function readData() {
         setDataCacheHeaders(res, 60);
         return res.json({ items: [] });
       }
-  
-      const items = list
-        .filter(
-          (m) =>
-            m.id !== id &&
-            m.category === cur.category &&
-            hasGenreIntersection(m.genres, cur.genres) &&
-            !isHidden(m)
-        )
-        .slice(0, 6)
-        .map((m) => ({
-          id: m.id,
-          category: m.category,
-          title: m.title,
-          year: m.year,
-          image: m.image,
-          kpRating: m.kpRating,
-          imdbRating: m.imdbRating,
-          genres: m.genres,
-        }));
-  
+
+      let items = [];
+      if (relatedMapCache && relatedMapCache[id]) {
+        items = mapIdsToCards(data, relatedMapCache[id]);
+      }
+      if (!items.length) {
+        items = list
+          .filter(
+            (m) =>
+              m.id !== id &&
+              m.category === cur.category &&
+              hasGenreIntersection(m.genres, cur.genres) &&
+              !isHidden(m)
+          )
+          .slice(0, 6)
+          .map((m) => ({
+            id: m.id,
+            category: m.category,
+            title: m.title,
+            year: m.year,
+            image: m.image,
+            kpRating: m.kpRating,
+            imdbRating: m.imdbRating,
+            genres: m.genres,
+          }));
+      }
+
       setDataCacheHeaders(res, 60);
       res.json({ items });
     } catch {
@@ -1075,13 +1392,17 @@ async function readData() {
       sort,
     } = req.query;
     const data = await readData();
-    let list = (data?.movies || []).filter((m) => m.id !== "index" && !isHidden(m));
+    let list = (data?.movies || []).filter(
+      (m) => m.id !== "index" && !isHidden(m)
+    );
 
     if (category) list = list.filter((m) => m.category === String(category));
     if (year) list = list.filter((m) => String(m.year) === String(year));
     if (genre) {
       const needle = normalizeGenreLabel(String(genre));
-      list = list.filter((m) => normalizeMovieGenres(m.genres).includes(needle));
+      list = list.filter((m) =>
+        normalizeMovieGenres(m.genres).includes(needle)
+      );
     }
     if (country)
       list = list.filter((m) =>
@@ -1158,23 +1479,26 @@ async function readData() {
       }
       if (tryConditional304(req, res)) return;
       setDataCacheHeaders(res, 30);
-  
+
       const key = `sugg:${String(q).toLowerCase()}`;
       const cached = searchCache.get(key);
-      if (cached && (Date.now() - cached.ts) < SEARCH_TTL_MS && cached.mtime === lastModifiedTime) {
+      if (
+        cached &&
+        Date.now() - cached.ts < SEARCH_TTL_MS &&
+        cached.mtime === lastModifiedTime
+      ) {
         return res.json(cached.data);
       }
-  
+
       const data = await readData();
       if (!data || !data.movies) {
         return res.status(500).json({ error: "Could not load movie data." });
       }
-  
+
       const suggestions = data.movies
         .filter(
           (movie) =>
             movie.id !== "index" &&
-            !isRecentPremiere(movie) &&
             !isHidden(movie) &&
             (movie.title.toLowerCase().includes(q.toLowerCase()) ||
               (movie.originalTitle &&
@@ -1191,8 +1515,13 @@ async function readData() {
           kpRating: movie.kpRating,
           imdbRating: movie.imdbRating,
         }));
-  
-      setWithCap(searchCache, key, { ts: Date.now(), data: suggestions, mtime: lastModifiedTime }, MAX_SEARCH_CACHE);
+
+      setWithCap(
+        searchCache,
+        key,
+        { ts: Date.now(), data: suggestions, mtime: lastModifiedTime },
+        MAX_SEARCH_CACHE
+      );
       res.json(suggestions);
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -1203,6 +1532,10 @@ async function readData() {
   // API endpoint для голосования за страницу
   app.post("/api/vote-page", async (req, res) => {
     try {
+      res.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+      );
       const { movieId, voteType, previousVote } = req.body;
 
       if (!movieId) {
@@ -1229,6 +1562,9 @@ async function readData() {
       if (voteType === "like") ratings.pageLikes++;
       if (voteType === "dislike") ratings.pageDislikes++;
 
+      ratings.pageLikes = Math.max(0, ratings.pageLikes);
+      ratings.pageDislikes = Math.max(0, ratings.pageDislikes);
+
       await saveRatingsForMovie(movieId, ratings);
 
       res.json({
@@ -1245,6 +1581,10 @@ async function readData() {
   // API endpoint для получения оценок фильма
   app.get("/api/movie-ratings/:movieId", async (req, res) => {
     try {
+      res.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+      );
       const { movieId } = req.params;
       const ratings = await getRatingsForMovie(movieId);
       res.json({
@@ -1332,6 +1672,10 @@ async function readData() {
   // API endpoint для получения комментариев фильма
   app.get("/api/movie-comments/:movieId", async (req, res) => {
     try {
+      res.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+      );
       const { movieId } = req.params;
       const comments = await getCommentsForMovie(movieId);
       res.json({
@@ -1347,6 +1691,10 @@ async function readData() {
   // API endpoint для голосования за комментарий
   app.post("/api/vote-comment", async (req, res) => {
     try {
+      res.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+      );
       const { movieId, commentId, voteType, previousVote } = req.body;
 
       if (!movieId || !commentId) {
@@ -1392,62 +1740,75 @@ async function readData() {
     }
   });
 
-  // On-the-fly ресайз постеров: /img?src=/uploads/posts/foo.jpg&w=360&q=70&f=webp
-// замена обработчика /img
-app.get("/img", async (req, res) => {
-  try {
-    const src = String(req.query.src || "");
-    const w = Math.max(1, Math.min(1200, parseInt(req.query.w, 10) || 360));
-    const q = Math.max(1, Math.min(95, parseInt(req.query.q, 10) || 70));
-    let f = String(req.query.f || "webp").toLowerCase(); // webp|jpeg|avif
+  // On-the-fly ресайз постеров: /img?src=/uploads/media/foo.jpg&w=360&q=70&f=webp
+  // замена обработчика /img
+  app.get("/img", async (req, res) => {
+    try {
+      const src = String(req.query.src || "");
+      const w = Math.max(1, Math.min(1200, parseInt(req.query.w, 10) || 360));
+      const q = Math.max(1, Math.min(95, parseInt(req.query.q, 10) || 70));
+      let f = String(req.query.f || "webp").toLowerCase(); // webp|jpeg|avif
 
-    // Только белые директории
-    const uploadsDir = path.join(__dirname, "uploads");
-    const assetsDir  = path.join(__dirname, "assets");
-    const abs = path.join(__dirname, src.replace(/^\//, ""));
-    const norm = path.normalize(abs);
-    const insideAllowed =
-      norm.startsWith(uploadsDir + path.sep) || norm.startsWith(assetsDir + path.sep);
+      // Только белые директории
+      const uploadsDir = path.join(__dirname, "uploads");
+      const assetsDir = path.join(__dirname, "assets");
+      const abs = path.join(__dirname, src.replace(/^\//, ""));
+      const norm = path.normalize(abs);
+      const insideAllowed =
+        norm.startsWith(uploadsDir + path.sep) ||
+        norm.startsWith(assetsDir + path.sep);
 
-    if (!insideAllowed) return res.status(400).send("bad-src");
-    if (!fsSync.existsSync(norm)) return res.status(404).send("not found");
+      if (!insideAllowed) return res.status(400).send("bad-src");
+      if (!fsSync.existsSync(norm)) return res.status(404).send("not found");
 
-    // Только валидные исходные расширения
-    const allowedSrcExt = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
-    const srcExt = path.extname(norm).toLowerCase();
-    if (!allowedSrcExt.has(srcExt)) return res.status(415).send("unsupported-image");
+      // Только валидные исходные расширения
+      const allowedSrcExt = new Set([
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".avif",
+      ]);
+      const srcExt = path.extname(norm).toLowerCase();
+      if (!allowedSrcExt.has(srcExt))
+        return res.status(415).send("unsupported-image");
 
-    // Только валидные форматы вывода
-    if (!["webp", "jpeg", "jpg", "avif"].includes(f)) f = "webp";
+      // Только валидные форматы вывода
+      if (!["webp", "jpeg", "jpg", "avif"].includes(f)) f = "webp";
 
-    const sharp = require("sharp");
-    if (!sharpConfigured) {
-      const os = require("os");
-      sharp.concurrency(Math.max(2, Math.min(4, require("os").cpus().length)));
-      sharp.cache({ files: 0, items: 256, memory: 128 });
-      sharpConfigured = true;
+      const sharp = require("sharp");
+      if (!sharpConfigured) {
+        const os = require("os");
+        sharp.concurrency(
+          Math.max(2, Math.min(4, require("os").cpus().length))
+        );
+        sharp.cache({ files: 0, items: 256, memory: 128 });
+        sharpConfigured = true;
+      }
+
+      let img = sharp(norm).resize({ width: w, withoutEnlargement: true });
+      if (f === "avif") img = img.avif({ quality: q });
+      else if (f === "jpeg" || f === "jpg")
+        img = img.jpeg({ quality: q, mozjpeg: true });
+      else img = img.webp({ quality: q });
+
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.type(f === "jpeg" ? "jpeg" : f);
+
+      img.on("error", (err) => {
+        console.error("sharp stream error:", err?.message);
+        if (!res.headersSent) res.status(415).send("unsupported-image");
+        try {
+          res.end();
+        } catch {}
+      });
+
+      img.pipe(res);
+    } catch (e) {
+      console.error("img handler error:", e?.message);
+      res.status(500).send("img-error");
     }
-
-    let img = sharp(norm).resize({ width: w, withoutEnlargement: true });
-    if (f === "avif") img = img.avif({ quality: q });
-    else if (f === "jpeg" || f === "jpg") img = img.jpeg({ quality: q, mozjpeg: true });
-    else img = img.webp({ quality: q });
-
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    res.type(f === "jpeg" ? "jpeg" : f);
-
-    img.on("error", (err) => {
-      console.error("sharp stream error:", err?.message);
-      if (!res.headersSent) res.status(415).send("unsupported-image");
-      try { res.end(); } catch {}
-    });
-
-    img.pipe(res);
-  } catch (e) {
-    console.error("img handler error:", e?.message);
-    res.status(500).send("img-error");
-  }
-});
+  });
 
   // Probe external player URL (server-side) to detect "content not found" pages
   app.get("/api/probe-player", async (req, res) => {
@@ -1509,7 +1870,7 @@ app.get("/img", async (req, res) => {
 
       const debug = String(req.query.debug || "") === "1";
       const sample = body.slice(0, 800);
-      
+
       if (debug) {
         console.log("[probe]", { host, status, matched, looksBad });
         console.log("[probe-full]", {
@@ -1520,7 +1881,7 @@ app.get("/img", async (req, res) => {
           sample: sample.replace(/\n/g, " "),
         });
       }
-      
+
       if (debug) {
         return res.json({
           ok: !looksBad,
@@ -1626,35 +1987,6 @@ app.get("/img", async (req, res) => {
     }
   });
 
-  app.get("/api/ym-tag.js", async (req, res) => {
-    try {
-      const upstream = "https://mc.yandex.ru/metrika/tag.js";
-      const resp = await axios.get(upstream, {
-        timeout: 10000,
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          Accept: "application/javascript,text/javascript,*/*;q=0.1",
-        },
-        responseType: "text",
-        validateStatus: () => true,
-      });
-      if (resp.status >= 400 || !resp.data) {
-        return res
-          .status(502)
-          .type("application/javascript")
-          .send("// ym proxy: upstream failed");
-      }
-      res.set("Content-Type", "application/javascript; charset=utf-8");
-      res.set("Cache-Control", "public, max-age=2592000, immutable");
-      res.send(resp.data);
-    } catch (e) {
-      res
-        .status(502)
-        .type("application/javascript")
-        .send("// ym proxy: request failed");
-    }
-  });
-
   // Прокси для загрузчика Kodik, чтобы обойти блокировки/AdBlock
   app.get("/api/kd-loader.js", async (req, res) => {
     try {
@@ -1676,7 +2008,7 @@ app.get("/img", async (req, res) => {
           .send("// kd proxy: upstream failed");
       }
       res.set("Content-Type", "application/javascript; charset=utf-8");
-      res.set("Cache-Control", "public, max-age=3600");
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
       res.send(resp.data);
     } catch (e) {
       res
@@ -1686,13 +2018,102 @@ app.get("/img", async (req, res) => {
     }
   });
 
+  app.get("/api/asset-loader.js", async (req, res) => {
+    try {
+      const upstream = "https://california1955.nl/s2/asset.loader.js";
+      const resp = await axios.get(upstream, {
+        timeout: 10000,
+        responseType: "text",
+        validateStatus: () => true,
+      });
+      if (resp.status >= 400 || !resp.data) {
+        return res
+          .status(502)
+          .type("application/javascript")
+          .send("// asset proxy failed");
+      }
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
+      res.send(resp.data);
+    } catch {
+      res
+        .status(502)
+        .type("application/javascript")
+        .send("// asset proxy: request failed");
+    }
+  });
+
+  // /api/cdnvh-esm.js — пробуем ESM, иначе UMD
+  app.get("/api/cdnvh-esm.js", async (req, res) => {
+    const tryUrls = [
+      "https://player.cdnvideohub.com/s2/stable/video-player.es.js",
+      "https://player.cdnvideohub.com/s2/stable/video-player.esm.js",
+      "https://player.cdnvideohub.com/s2/stable/video-player.module.js",
+    ];
+    try {
+      for (const u of tryUrls) {
+        const r = await axios.get(u, {
+          timeout: 12000,
+          responseType: "text",
+          validateStatus: () => true,
+        });
+        if (r.status < 400 && r.data) {
+          res.set("Content-Type", "application/javascript; charset=utf-8");
+          res.set("Cache-Control", "public, max-age=2592000, immutable");
+          return res.send(r.data);
+        }
+      }
+      // fallback: UMD
+      const r = await axios.get(
+        "https://player.cdnvideohub.com/s2/stable/video-player.umd.js",
+        {
+          timeout: 15000,
+          responseType: "text",
+          validateStatus: () => true,
+        }
+      );
+      res.set("Content-Type", "application/javascript; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=2592000, immutable");
+      res.send(r.data || "");
+    } catch {
+      res
+        .status(502)
+        .type("application/javascript")
+        .send("// cdnvh esm proxy: request failed");
+    }
+  });
+
   // SEO: robots.txt
+  //   app.get("/robots.txt", (req, res) => {
+  //     res.type("text/plain").send(
+  //       `User-agent: *
+  // Allow: /
+  // Disallow: /api/
+  // Sitemap: ${BASE_URL}/sitemap.xml
+  // `
+  //     );
+  //   });
+
   app.get("/robots.txt", (req, res) => {
+    const block = process.env.BLOCK_INDEXING === "true";
     res.type("text/plain").send(
-      `User-agent: *
+      block
+        ? `User-agent: *
+Disallow: /`
+        : `User-agent: *
 Allow: /
+Disallow: /api/
 Sitemap: ${BASE_URL}/sitemap.xml
 `
+    );
+  });
+
+  app.get("/favicon.ico", (req, res) => {
+    // res.sendFile(path.join(__dirname, "assets/ProsmotrZone_site/images/favicon.ico"));
+    res.set("Cache-Control", "public, max-age=0, must-revalidate");
+    res.type("image/x-icon");
+    res.sendFile(
+      path.join(__dirname, "assets/ProsmotrZone_site/images/favicon.ico")
     );
   });
 
@@ -1701,36 +2122,69 @@ Sitemap: ${BASE_URL}/sitemap.xml
     try {
       const data = await readData();
       const movies = (data?.movies || []).filter(
-        (m) => m.id !== "index" && !isRecentPremiere(m) && !isHidden(m)
+        (m) => m.id !== "index" && !isHidden(m)
       );
-      const now = new Date().toISOString().split("T")[0];
+      const siteLastmodDate = new Date(lastModifiedTime || Date.now());
+      const getMovieLastmod = (m) => {
+        const today = new Date();
+        const min = new Date("1990-01-01");
+        let d =
+          parseRussianPremiere(m.premiere) ||
+          (Number(m.year) >= 1900 ? new Date(`${m.year}-01-01`) : null);
+
+        if (!d || isNaN(d.getTime())) d = siteLastmodDate;
+        if (d < min) d = siteLastmodDate;
+        if (d > today) d = today;
+        if (d < siteLastmodDate) d = siteLastmodDate; // не старее обновления данных
+        return d.toISOString().split("T")[0];
+      };
+
+      const siteLastmod = new Date(lastModifiedTime || Date.now())
+        .toISOString()
+        .split("T")[0];
 
       const urls = [
-        { loc: `${BASE_URL}/`, priority: "1.0" },
-        { loc: `${BASE_URL}/filmy`, priority: "0.8" },
-        { loc: `${BASE_URL}/serialy`, priority: "0.8" },
-        { loc: `${BASE_URL}/multfilmy`, priority: "0.8" },
-        { loc: `${BASE_URL}/anime`, priority: "0.8" },
+        { loc: `${BASE_URL}/`, priority: "1.0", lastmod: siteLastmod },
+        { loc: `${BASE_URL}/filmy`, priority: "0.8", lastmod: siteLastmod },
+        { loc: `${BASE_URL}/serialy`, priority: "0.8", lastmod: siteLastmod },
+        { loc: `${BASE_URL}/multfilmy`, priority: "0.8", lastmod: siteLastmod },
+        { loc: `${BASE_URL}/anime`, priority: "0.8", lastmod: siteLastmod },
+        {
+          loc: `${BASE_URL}/top-all-time`,
+          priority: "0.6",
+          lastmod: siteLastmod,
+        },
+        {
+          loc: `${BASE_URL}/serialy?special=doramas`,
+          priority: "0.5",
+          lastmod: siteLastmod,
+        },
+        {
+          loc: `${BASE_URL}/serialy?special=turkish`,
+          priority: "0.5",
+          lastmod: siteLastmod,
+        },
       ].concat(
         movies.map((m) => ({
           loc: `${BASE_URL}/${m.category}/${m.id}`,
           priority: "0.6",
+          lastmod: getMovieLastmod(m),
         }))
       );
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls
-  .map(
-    (u) => `  <url>
-    <loc>${u.loc}</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${u.priority}</priority>
-  </url>`
-  )
-  .join("\n")}
-</urlset>`;
+      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      ${urls
+        .map(
+          (u) => `  <url>
+          <loc>${u.loc}</loc>
+          <lastmod>${u.lastmod}</lastmod>
+          <changefreq>weekly</changefreq>
+          <priority>${u.priority}</priority>
+        </url>`
+        )
+        .join("\n")}
+      </urlset>`;
       res.type("application/xml").send(xml);
     } catch (e) {
       console.error("Ошибка sitemap:", e);
@@ -1754,46 +2208,221 @@ ${urls
     const movies = data?.movies || [];
     const categories = data?.categories || {};
 
+    // ВАЖНО: существующий файл в корневой папке assets
+    const defaultOgImage = `${BASE_URL}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+
     const seo = {
-      title: "LordFilm — фильмы, сериалы и аниме онлайн",
+      title:
+        "ProsmotrZone - смотреть фильмы и сериалы в HD качестве онлайн бесплатно",
       description:
-        "Смотрите фильмы, сериалы и аниме онлайн в HD без регистрации — LordFilm.",
+        "На ProsmotrZone вас ждут новые фильмы, сериалы и аниме онлайн. Смотрите премьеры 2025 года, классику, рейтинговые хиты и новинки. Здесь вы можете смотреть без регистрации бесплатно в HD (720p, 1080p) без лишней рекламы. Удобный поиск и фильтры по жанрам, актёрам, годам и другим параметрам. Можете смотреть с любого устройства в любое время дня.",
       canonical: BASE_URL + "/",
-      ogImage: null,
+      ogImage: defaultOgImage,
       robots: "index,follow",
       ldJson: null,
       status: 200,
       ogType: "website",
     };
 
-    if (path === "/") return seo;
+    // Главная
+    if (path === "/") {
+      // Структурированная разметка для поиска по сайту
+      seo.ldJson = {
+        website: {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          url: `${BASE_URL}/`,
+          name: "ProsmotrZone",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: `${BASE_URL}/?q={search_term_string}`,
+            "query-input": "required name=search_term_string",
+          },
+        },
+      };
+      return seo;
+    }
 
-    if (path === "/tops") {
-      seo.title = "Топ всех фильмов и сериалов — LordFilms";
+    // Топ
+    if (path === "/top-all-time") {
+      const t = (u.searchParams.get("type") || "all").toLowerCase();
+      const label =
+        {
+          all: "фильмы и сериалы",
+          filmy: "фильмы",
+          serialy: "сериалы",
+          multfilmy: "мультфильмы",
+          anime: "аниме",
+          doramas: "дорамы",
+          turkish: "турецкие сериалы",
+        }[t] || "фильмы и сериалы";
+
+      seo.title =
+        t === "all"
+          ? "Топ всех фильмов и сериалов — ProsmotrZone"
+          : `Топ: ${label} — ProsmotrZone`;
+
       seo.description =
-        "Рейтинг фильмов и сериалов: лучшие по версиям IMDb/Кинопоиск на LordFilms.";
-      seo.canonical = `${BASE_URL}/tops`;
+        "Лучшие фильмы и сериалы по рейтингу IMDb и Кинопоиск на ProsmotrZone. Выбирайте и смотрите онлайн бесплатно в HD.";
+      seo.canonical = `${BASE_URL}/top-all-time`; // фиксированный canonical
+      return seo;
+    }
+    if (path === "/novinki") {
+      const nowY = new Date().getFullYear();
+      const y =
+        parseInt(u.searchParams.get("year") || String(nowY), 10) || nowY;
+      const cat = (u.searchParams.get("category") || "all").toLowerCase();
+      const label =
+        {
+          all: "фильмы, сериалы, мультфильмы и аниме",
+          filmy: "фильмы",
+          serialy: "сериалы",
+          multfilmy: "мультфильмы",
+          anime: "аниме",
+          doramas: "дорамы",
+          turkish: "турецкие сериалы",
+        }[cat] || "фильмы, сериалы, мультфильмы и аниме";
+
+      seo.title =
+        cat === "all"
+          ? `Новинки ${y} — ProsmotrZone`
+          : `Новинки ${y}: ${label} — ProsmotrZone`;
+
+      seo.description = `Свежие новинки ${y} года: ${label}. Смотрите онлайн в хорошем качестве на ProsmotrZone.`;
+      seo.canonical = `${BASE_URL}/novinki`; // фиксированный canonical
       return seo;
     }
 
     const knownCats = ["filmy", "serialy", "multfilmy", "anime"];
     const parts = path.split("/").filter(Boolean);
 
-    // Category root: /filmy, /serialy, /multfilmy, /anime
+    // Категории: /filmy, /serialy, /multfilmy, /anime (+ query)
     if (knownCats.includes(path.slice(1))) {
       const cat = path.slice(1);
-      const name =
-        categories[cat] ||
-        {
-          filmy: "Фильмы",
-          serialy: "Сериалы",
-          multfilmy: "Мультфильмы",
-          anime: "Аниме",
-        }[cat] ||
-        "Контент";
-      seo.title = `${name} смотреть онлайн — LordFilms`;
-      seo.description = `${name} в хорошем качестве без рекламы — онлайн на LordFilms.`;
-      seo.canonical = `${BASE_URL}/${cat}`;
+      const sp = u.searchParams;
+      const year = sp.get("year") || "";
+      const genre = sp.get("genre") || "";
+      const country = sp.get("country") || "";
+      const translation = sp.get("translation") || "";
+      const actor = sp.get("actor") || "";
+      const special = sp.get("special") || "";
+      const pageNum = parseInt(sp.get("page") || "1", 10) || 1;
+
+      const forms = {
+        filmy: {
+          nom: "Фильмы",
+          gen: "фильмов",
+          lower: "фильмы",
+          sing: "фильм",
+        },
+        serialy: {
+          nom: "Сериалы",
+          gen: "сериалов",
+          lower: "сериалы",
+          sing: "сериал",
+        },
+        multfilmy: {
+          nom: "Мультфильмы",
+          gen: "мультфильмов",
+          lower: "мультфильмы",
+          sing: "мультфильм",
+        },
+        anime: { nom: "Аниме", gen: "аниме", lower: "аниме", sing: "аниме" },
+      };
+      const fallback = categories[cat] || "Контент";
+      const f = forms[cat] || {
+        nom: fallback,
+        gen: fallback.toLowerCase(),
+        lower: fallback.toLowerCase(),
+        sing: fallback.toLowerCase(),
+      };
+
+      // Квалификаторы
+      const qual = [];
+      if (genre) qual.push(`жанра ${genre}`);
+      if (country) qual.push(`страны ${country}`);
+      if (year) qual.push(`за ${year} год`);
+      if (translation) qual.push(`в переводе ${translation}`);
+
+      let listSubjectGen = f.gen; // "фильмов"
+      let browseSubjectNomLower = f.lower; // "фильмы"
+      if (special === "doramas") {
+        listSubjectGen = "дорам";
+        browseSubjectNomLower = "дорамы";
+      } else if (special === "turkish") {
+        listSubjectGen = "турецких сериалов";
+        browseSubjectNomLower = "турецкие сериалы";
+      }
+      if (actor) {
+        qual.unshift(`с ${actor}`);
+      }
+      const qualStr = qual.length ? ` ${qual.join(", ")}` : "";
+
+      seo.title = `Список всех ${listSubjectGen}${qualStr} смотреть онлайн бесплатно в хорошем качестве на ProsmotrZone`;
+      if (pageNum > 1) {
+        seo.title += ` — страница ${pageNum}`;
+      }
+      seo.description = `Выбирайте для просмотра ${browseSubjectNomLower}${qualStr} с помощью удобных фильтров и смотрите в HD качестве без регистрации онлайн на ProsmotrZone.`;
+
+      // canonical — нормализуем: убираем дефолтные page/limit/sort
+      const usp = new URLSearchParams(u.search);
+      if ((usp.get("page") || "1") === "1") usp.delete("page");
+      if ((usp.get("limit") || "24") === "24") usp.delete("limit");
+      if ((usp.get("sort") || "year") === "year") usp.delete("sort");
+      const qs = usp.toString();
+      seo.canonical = `${BASE_URL}/${cat}${qs ? `?${qs}` : ""}`;
+
+      // Для prev/next и определения пустых выдач — строим feed
+      const feedParams = {
+        name: cat,
+        page: pageNum,
+        limit: Math.max(
+          1,
+          Math.min(200, parseInt(sp.get("limit") || "24", 10))
+        ),
+        sort: sp.get("sort") || "year",
+        year,
+        genre,
+        country,
+        translation,
+        actor,
+        special,
+        home: false,
+      };
+      const feed = buildCategoryFeed(data, feedParams);
+
+      // rel prev/next
+      const mkAbsUrl = (p) => {
+        const usp = new URLSearchParams(u.search);
+        usp.set("page", String(p));
+        // (опционально) можно тоже убирать дефолтные limit/sort:
+        if ((usp.get("limit") || "24") === "24") usp.delete("limit");
+        if ((usp.get("sort") || "year") === "year") usp.delete("sort");
+        const qs = usp.toString();
+        return `${BASE_URL}/${cat}${qs ? `?${qs}` : ""}`;
+      };
+      if (feed.page > 1) seo.prevUrl = mkAbsUrl(feed.page - 1);
+      if (feed.page < feed.totalPages) seo.nextUrl = mkAbsUrl(feed.page + 1);
+
+      // Пустые выдачи — noindex,follow
+      if (feed.total === 0) {
+        seo.robots = "noindex,follow";
+      }
+      // после const feed = buildCategoryFeed(data, feedParams);
+      if (feed.page > feed.totalPages) {
+        seo.robots = "noindex,follow";
+      }
+      const itemList = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        itemListElement: feed.items.map((it, idx) => ({
+          "@type": "ListItem",
+          position: idx + 1 + (feed.page - 1) * feed.limit,
+          url: `${BASE_URL}/${it.category}/${it.id}`,
+          name: it.title,
+        })),
+      };
+      seo.ldJson = { ...(seo.ldJson || {}), list: itemList };
       return seo;
     }
 
@@ -1802,52 +2431,136 @@ ${urls
       const [cat, id] = parts;
       const m = movies.find((x) => x.id === id);
       if (!m || isHidden(m)) {
-        seo.title = "Страница не найдена — LordFilms";
+        seo.title = "Страница не найдена — ProsmotrZone";
         seo.description = "Страница не найдена.";
         seo.canonical = `${BASE_URL}${path}`;
         seo.robots = "noindex,follow";
         seo.status = 404;
         return seo;
       }
+
+      seo.ogType = "video.movie";
       const year = m.year ? ` (${m.year})` : "";
-      seo.title = `${m.title}${year} смотреть онлайн — LordFilms`;
-      const desc =
-        truncate(stripTags(m.description), 300) ||
-        `${m.title}${year} смотреть онлайн в хорошем качестве.`;
-      seo.description = desc;
+      seo.title = `${m.title}${year} смотреть онлайн бесплатно в хорошем качестве`;
+
+      const isSerial =
+        m.category === "serialy" ||
+        m.category === "serials" ||
+        m.category === "anime" ||
+        m.category === "animes" ||
+        !!m.season ||
+        !!m.episode;
+
+      const typeLabel =
+        m.category === "filmy"
+          ? "фильм"
+          : m.category === "serialy" || m.category === "serials"
+          ? "сериал"
+          : m.category === "anime" || m.category === "animes"
+          ? "аниме"
+          : m.season || m.episode
+          ? "мультсериал"
+          : "мультфильм";
+
+      const metaParts = [];
+      if (m.year) metaParts.push(String(m.year));
+      const se = [];
+      if (m.season) {
+        const s = String(m.season).trim();
+        se.push(/сезон/i.test(s) ? s : `${s} сезон`);
+      }
+      if (m.episode) {
+        const e = String(m.episode).trim();
+        se.push(/сер(ия|ии)/i.test(e) ? e : `${e} серия`);
+      }
+      if (se.length) metaParts.push(se.join(" "));
+      const details = metaParts.length ? ` (${metaParts.join(", ")})` : "";
+
+      const synopsis = stripTags(m.description);
+      const synopsisShort = truncate(synopsis, 200);
+      const metaDesc = isSerial
+        ? `Смотреть ${typeLabel} ${m.title} все серии подряд${details}. Описание: ${synopsisShort}`
+        : `Смотреть ${typeLabel} ${m.title}${details} онлайн в отличном качестве с русской озвучкой. Описание: ${synopsisShort}`;
+
+      seo.description = metaDesc;
       seo.canonical = `${BASE_URL}/${m.category}/${m.id}`;
-      seo.ogImage = m.image
+
+      const posterAbs = m.image
         ? m.image.startsWith("http")
           ? m.image
           : `${BASE_URL}/${
               m.image.startsWith("/") ? m.image.slice(1) : m.image
             }`
         : null;
+      seo.ogImage = posterAbs || defaultOgImage;
 
-      const rating = m.imdbRating || m.kpRating;
+      const ratingRaw = m.imdbRating || m.kpRating;
+      const ratingNum = parseFloat(String(ratingRaw || "").replace(",", "."));
+      const ldDesc = truncate(synopsis, 300);
+
+      // Более богатый JSON-LD
+      const baseType = isSerial ? "TVSeries" : "Movie";
       const ld = {
         "@context": "https://schema.org",
-        "@type": "Movie",
+        "@type": baseType,
         name: m.title,
         datePublished: m.year ? String(m.year) : undefined,
-        image: seo.ogImage || undefined,
-        description: desc,
-        aggregateRating: rating
-          ? {
-              "@type": "AggregateRating",
-              ratingValue: Number(rating),
-              bestRating: 10,
-              ratingCount: 100,
-            }
+        image: posterAbs || defaultOgImage,
+        description: ldDesc,
+        genre: Array.isArray(m.genres) ? m.genres.filter(Boolean) : undefined,
+        actor: Array.isArray(m.actors)
+          ? m.actors.slice(0, 10).map((name) => ({ "@type": "Person", name }))
           : undefined,
+        director: m.director
+          ? [{ "@type": "Person", name: m.director }]
+          : undefined,
+        trailer: m.trailer
+          ? [{ "@type": "VideoObject", url: m.trailer }]
+          : undefined,
+        aggregateRating:
+          Number.isFinite(ratingNum) && ratingNum > 0
+            ? {
+                "@type": "AggregateRating",
+                ratingValue: ratingNum.toFixed(1),
+                bestRating: "10",
+                worstRating: "0",
+              }
+            : undefined,
       };
-      seo.ldJson = JSON.stringify(ld);
+      if (m.season || m.episode) {
+        ld.partOfSeries = { "@type": "TVSeries", name: m.title };
+      }
+      const breadcrumbsLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Главная",
+            item: `${BASE_URL}/`,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: categories?.[m.category] || "Категория",
+            item: `${BASE_URL}/${m.category}`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: m.title,
+            item: `${BASE_URL}/${m.category}/${m.id}`,
+          },
+        ],
+      };
+      seo.ldJson = { movie: ld, breadcrumbs: breadcrumbsLd };
       return seo;
     }
 
-    // Any other URL under a known category (e.g. /serialy/.../page/4) => 404
+    // Любая другая вложенность в известных категориях → 404
     if (parts.length > 0 && knownCats.includes(parts[0])) {
-      seo.title = "Страница не найдена — LordFilms";
+      seo.title = "Страница не найдена — ProsmotrZone";
       seo.description = "Страница не найдена.";
       seo.canonical = `${BASE_URL}${path}`;
       seo.robots = "noindex,follow";
@@ -1855,8 +2568,8 @@ ${urls
       return seo;
     }
 
-    // Any other unknown path => 404
-    seo.title = "Страница не найдена — LordFilms";
+    // Неизвестный путь → 404
+    seo.title = "Страница не найдена — ProsmotrZone";
     seo.description = "Страница не найдена.";
     seo.canonical = `${BASE_URL}${path}`;
     seo.robots = "noindex,follow";
@@ -1874,7 +2587,8 @@ ${urls
     const p = (url.split("?")[0] || "/").replace(/\/+$/, "") || "/";
     const parts = p.split("/").filter(Boolean);
     if (p === "/") return { type: "home" };
-    if (p === "/tops") return { type: "tops" };
+    if (p === "/top-all-time") return { type: "tops" };
+    if (p === "/novinki") return { type: "novinki" };
     if (
       ["filmy", "serialy", "multfilmy", "anime"].includes(parts[0]) &&
       parts.length === 1
@@ -1886,89 +2600,129 @@ ${urls
     return { type: "unknown" };
   }
 
-  function injectSeo(html, seo) {
-    // title
-    html = html.replace(
-      /<title>[\s\S]*?<\/title>/i,
-      `<title>${seo.title}</title>`
+  function injectSeo(html, seo = {}) {
+    const escapeAttr = (value = "") =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;");
+
+    const escapeText = (value = "") =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const serializeJsonLd = (payload) =>
+      JSON.stringify(payload ?? {}).replace(/</g, "\\u003c");
+
+    const upsert = (pattern, tag) => {
+      if (pattern.test(html)) {
+        html = html.replace(pattern, tag);
+      } else {
+        html = html.replace("</head>", `  ${tag}\n</head>`);
+      }
+    };
+
+    const titleText = escapeText(seo.title || "");
+    if (titleText) {
+      html = html.replace(
+        /<title>[\s\S]*?<\/title>/i,
+        `<title>${titleText}</title>`
+      );
+    }
+
+    const descriptionAttr = escapeAttr(seo.description ?? "");
+    upsert(
+      /<meta\s+name=["']description["'][^>]*>/i,
+      `<meta name="description" content="${descriptionAttr}">`
     );
 
-    // meta description (upsert)
-    if (/<meta\s+name=["']description["'][^>]*>/i.test(html)) {
-      html = html.replace(
-        /<meta\s+name=["']description["'][^>]*>/i,
-        `<meta name="description" content="${seo.description}">`
-      );
-    } else {
-      html = html.replace(
-        "</head>",
-        `  <meta name="description" content="${seo.description}">\n</head>`
+    if (seo.robots !== undefined && seo.robots !== null) {
+      const robotsAttr = escapeAttr(seo.robots);
+      upsert(
+        /<meta\s+name=["']robots["'][^>]*>/i,
+        `<meta name="robots" content="${robotsAttr}">`
       );
     }
 
-    // robots
-    if (seo.robots) {
-      if (/<meta\s+name=["']robots["'][^>]*>/i.test(html)) {
-        html = html.replace(
-          /<meta\s+name=["']robots["'][^>]*>/i,
-          `<meta name="robots" content="${seo.robots}">`
-        );
-      } else {
-        html = html.replace(
-          "</head>",
-          `  <meta name="robots" content="${seo.robots}">\n</head>`
-        );
-      }
-    }
-
-    // canonical (upsert)
-    if (/<link\s+rel=["']canonical["'][^>]*>/i.test(html)) {
-      html = html.replace(
+    if (seo.canonical) {
+      const canonicalAttr = escapeAttr(seo.canonical);
+      upsert(
         /<link\s+rel=["']canonical["'][^>]*>/i,
-        `<link rel="canonical" href="${seo.canonical}">`
-      );
-    } else {
-      html = html.replace(
-        "</head>",
-        `  <link rel="canonical" href="${seo.canonical}">\n</head>`
+        `<link rel="canonical" href="${canonicalAttr}">`
       );
     }
 
-    // OpenGraph
-    const og = [
+    // Новые prev/next ссылки
+    if (seo.prevUrl) {
+      upsert(
+        /<link\s+rel=["']prev["'][^>]*>/i,
+        `<link rel="prev" href="${escapeAttr(seo.prevUrl)}">`
+      );
+    }
+    if (seo.nextUrl) {
+      upsert(
+        /<link\s+rel=["']next["'][^>]*>/i,
+        `<link rel="next" href="${escapeAttr(seo.nextUrl)}">`
+      );
+    }
+
+    const ogPairs = [
       ["og:type", seo.ogType || "website"],
+      ["og:site_name", "ProsmotrZone"],
+      ["og:locale", "ru_RU"],
       ["og:title", seo.title],
       ["og:description", seo.description],
       ["og:url", seo.canonical],
     ];
-    if (seo.ogImage) og.push(["og:image", seo.ogImage]);
-    for (const [prop, content] of og) {
-      const re = new RegExp(`<meta\\s+property=["']${prop}["'][^>]*>`, "i");
-      const tag = `<meta property="${prop}" content="${content}">`;
-      html = re.test(html)
-        ? html.replace(re, tag)
-        : html.replace("</head>", `  ${tag}\n</head>`);
+    if (seo.ogImage) ogPairs.push(["og:image", seo.ogImage]);
+
+    for (const [prop, value] of ogPairs) {
+      if (value === undefined || value === null || value === "") continue;
+      const escaped = escapeAttr(value);
+      upsert(
+        new RegExp(`<meta\\s+property=["']${prop}["'][^>]*>`, "i"),
+        `<meta property="${prop}" content="${escaped}">`
+      );
     }
 
-    // Twitter
-    const tw = [
+    const twPairs = [
       ["twitter:card", seo.ogImage ? "summary_large_image" : "summary"],
       ["twitter:title", seo.title],
       ["twitter:description", seo.description],
     ];
-    if (seo.ogImage) tw.push(["twitter:image", seo.ogImage]);
-    for (const [name, content] of tw) {
-      const re = new RegExp(`<meta\\s+name=["']${name}["'][^>]*>`, "i");
-      const tag = `<meta name="${name}" content="${content}">`;
-      html = re.test(html)
-        ? html.replace(re, tag)
-        : html.replace("</head>", `  ${tag}\n</head>`);
+    if (seo.ogImage) twPairs.push(["twitter:image", seo.ogImage]);
+
+    for (const [name, value] of twPairs) {
+      if (value === undefined || value === null || value === "") continue;
+      const escaped = escapeAttr(value);
+      upsert(
+        new RegExp(`<meta\\s+name=["']${name}["'][^>]*>`, "i"),
+        `<meta name="${name}" content="${escaped}">`
+      );
     }
 
-    // JSON-LD
     if (seo.ldJson) {
-      const tag = `<script type="application/ld+json">${seo.ldJson}</script>`;
-      html = html.replace("</head>", `  ${tag}\n</head>`);
+      const entries = Array.isArray(seo.ldJson)
+        ? seo.ldJson
+        : typeof seo.ldJson === "object"
+        ? Object.entries(seo.ldJson)
+        : [["ldjson", JSON.parse(seo.ldJson)]];
+      for (const [id, payload] of entries) {
+        const tag = `<script type="application/ld+json" data-id="${escapeAttr(
+          id
+        )}">${serializeJsonLd(payload)}</script>`;
+        const re = new RegExp(
+          `<script\\s+type=["']application/ld\\+json["'][^>]*data-id=["']${id}["'][^>]*>[\\s\\S]*?<\\/script>`,
+          "i"
+        );
+        if (re.test(html)) {
+          html = html.replace(re, tag);
+        } else {
+          html = html.replace("</head>", `  ${tag}\n</head>`);
+        }
+      }
     }
 
     return html;
@@ -2027,7 +2781,10 @@ ${urls
         if (!isBot(ua)) {
           const hit = getSsrFromCache(url);
           if (hit) {
-            return res.status(hit.status).set({ "Content-Type": "text/html" }).end(hit.html);
+            return res
+              .status(hit.status)
+              .set({ "Content-Type": "text/html" })
+              .end(hit.html);
           }
         }
 
@@ -2060,6 +2817,7 @@ ${urls
             params,
           };
         } else if (routeInfo.type === "movie") {
+          await readRelatedMap(); // добавить
           const payload = buildMoviePayload(data, routeInfo.id);
           if (payload) {
             initialState.moviePayload = payload;
@@ -2127,17 +2885,19 @@ ${urls
         // SEO-инъекция и 404
         const seo = computeSeo(url, data, BASE_URL);
         if (process.env.FORCE_NOINDEX === "1") seo.robots = "noindex, nofollow";
-        html = injectSeo(html, seo);
-        const AHREFS = process.env.AHREFS_VERIFY_TOKEN;
-        if (
-          AHREFS &&
-          !/<meta\s+name=["']ahrefs-site-verification["'][^>]*>/i.test(html)
-        ) {
-          html = html.replace(
-            "</head>",
-            `  <meta name="ahrefs-site-verification" content="${AHREFS}">\n</head>`
-          );
+        if (seo.robots && /noindex/i.test(seo.robots)) {
+          res.set("X-Robots-Tag", seo.robots);
         }
+        html = injectSeo(html, seo);
+        html = upsertPreconnects(html, [
+          "https://player.cdnvideohub.com",
+          "https://plapi.cdnvideohub.com",
+          "https://california1955.nl",
+          "https://pleer-laguna.ru",
+          "https://polygamist-as.stloadi.live",
+          "https://kodik-add.com",
+          "https://kodikapi.com",
+        ]);
         if (seo.status === 404) res.status(404);
       } else {
         // Production режим
@@ -2177,6 +2937,7 @@ ${urls
             params,
           };
         } else if (routeInfo.type === "movie") {
+          await readRelatedMap(); // добавить
           const payload = buildMoviePayload(data, routeInfo.id);
           if (payload) {
             initialState.moviePayload = payload;
@@ -2236,24 +2997,35 @@ ${urls
           .replace("<!--ssr-outlet-->", appHtml)
           .replace("<!--initial-state-->", stateScript);
 
-        // replaced: Critters runtime processing
-        const withNonBlockingCss = transformStylesheetsToPreload(htmlBase);
-        html = withNonBlockingCss;
-        //     path: path.resolve("dist/client"),
-        //     publicPath: "/",
-        //     preload: "swap", // неблокирующая загрузка остатка CSS
-        //     pruneSource: false, // не вырезаем исходный CSS-файл
-        //     reduceInlineStyles: false,
-        //   });
-        //   html = await critters.process(htmlBase);
-        // } catch (_) {
-        //   // Фолбэк: оставляем ваш неблокирующий конвертер
-        //   const withNonBlockingCss = transformStylesheetsToPreload(htmlBase);
-        //   html = withNonBlockingCss;
-        // }
+        try {
+          const critters = new Critters({
+            path: require("path").resolve("dist/client"),
+            publicPath: "/",
+            preload: "swap", // остатки CSS грузим неблокирующе
+            pruneSource: true, // удаляем из <link rel="stylesheet"> то, что инлайнено
+            reduceInlineStyles: true,
+          });
+          html = await critters.process(htmlBase);
+        } catch (e) {
+          // Фолбэк: ваш текущий неблокирующий конвертер
+          html = transformStylesheetsToPreload(htmlBase);
+        }
 
         const seo = computeSeo(url, data, BASE_URL);
+        if (seo.robots && /noindex/i.test(seo.robots)) {
+          res.set("X-Robots-Tag", seo.robots);
+        }
         html = injectSeo(html, seo);
+        html = upsertPreconnects(html, [
+          "https://player.cdnvideohub.com",
+          "https://plapi.cdnvideohub.com",
+          "https://california1955.nl",
+          "https://pleer-laguna.ru",
+          "https://polygamist-as.stloadi.live",
+          "https://kodik-add.com",
+          "https://kodikapi.com",
+        ]);
+
         const AHREFS = process.env.AHREFS_VERIFY_TOKEN;
         if (
           AHREFS &&
@@ -2265,12 +3037,15 @@ ${urls
           );
         }
         if (seo.status === 404) res.status(404);
-      
+
         if (!isBot(ua)) {
           setSsrToCache(url, html, res.statusCode || 200);
         }
       }
-
+      // нормализуем ссылки на ассеты и base
+      html = html
+        .replace(/https:\/\/assets\//g, "/assets/")
+        .replace(/([("'=\s])\/\/assets\//g, "$1/assets/");
       res.set({ "Content-Type": "text/html" }).end(html);
     } catch (e) {
       if (!isProduction && vite) {
@@ -2281,17 +3056,17 @@ ${urls
     }
   });
 
-// Warm the big JSON cache once at startup to avoid concurrent first-loads
-await readData();
+  // Warm the big JSON cache once at startup to avoid concurrent first-loads
+  await readData();
 
-// Запуск сервера
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
-  console.log(
-    `Статические файлы доступны по адресу: http://localhost:${PORT}`
-  );
-});
+  // Запуск сервера
+  app.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+    console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
+    console.log(
+      `Статические файлы доступны по адресу: http://localhost:${PORT}`
+    );
+  });
 
   return app;
 }

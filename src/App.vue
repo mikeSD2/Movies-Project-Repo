@@ -1,5 +1,5 @@
 <template>
-  <div class="wrapper wrapper--all">
+  <div class="wrapper">
     <div class="wrapper__container layout__container--primary">
       <!-- Хедер -->
       <AppHeader @search="handleSearch" @open-mobile-menu="openMobileMenu" />
@@ -100,19 +100,105 @@ onMounted(() => {
   // Инициализируем тему только на клиенте
   switchTheme()
 
+  const params = new URLSearchParams(location.search);
+  const q = params.get('q');
+  if (q) {
+    handleSearch(q);
+  }
+
   // Сбрасываем результаты при любой навигации + отправляем hit в Я.Метрику
+  // и перезапускаем трекинг вовлечённости (notBounce + цели по времени)
+  // Первая загрузка страницы учитывается стандартным init метрики
+  const engagement = {
+    started: false,
+    notBounceSent: false,
+    timers: [],
+    removeListeners: null,
+  }
+
+  const stopEngagement = () => {
+    if (engagement.removeListeners) {
+      engagement.removeListeners()
+      engagement.removeListeners = null
+    }
+    engagement.timers.forEach((t) => clearTimeout(t))
+    engagement.timers = []
+    engagement.started = false
+    engagement.notBounceSent = false
+  }
+
+  const startEngagement = () => {
+    // Запустить отслеживание вовлеченности при первом признаке активности пользователя
+    if (engagement.started) return
+    engagement.started = true
+
+    // Через 15с после первой активности — помечаем неотказ
+    const t1 = setTimeout(() => {
+      try {
+        if (!engagement.notBounceSent && window.ym && window.YM_ID) {
+          if (window.__YM_DEBUG) console.debug('[YM] notBounce')
+          window.ym(window.YM_ID, 'notBounce')
+          engagement.notBounceSent = true
+        }
+      } catch (_) {}
+    }, 15000)
+    engagement.timers.push(t1)
+
+    // Мягкие цели времени нахождения на странице (после начала активности)
+    const scheduleGoal = (ms, name) => {
+      const tid = setTimeout(() => {
+        try {
+          if (window.__YM_DEBUG) console.debug('[YM] goal', name)
+          window.ym && window.YM_ID && window.ym(window.YM_ID, 'reachGoal', name)
+        } catch (_) {}
+      }, ms)
+      engagement.timers.push(tid)
+    }
+    scheduleGoal(60000, 'stay_60s')
+    scheduleGoal(180000, 'stay_180s')
+    scheduleGoal(300000, 'stay_300s')
+  }
+
+  const initEngagementTracking = () => {
+    // Очистить предыдущее состояние
+    stopEngagement()
+
+    const onActivity = () => {
+      startEngagement()
+    }
+    const opts = { passive: true }
+    document.addEventListener('scroll', onActivity, opts)
+    document.addEventListener('pointerdown', onActivity, opts)
+    document.addEventListener('keydown', onActivity, opts)
+
+    engagement.removeListeners = () => {
+      document.removeEventListener('scroll', onActivity, opts)
+      document.removeEventListener('pointerdown', onActivity, opts)
+      document.removeEventListener('keydown', onActivity, opts)
+    }
+  }
+
+  // Инициализируем трекинг вовлеченности для первой страницы
+  initEngagementTracking()
+
   router.afterEach((to, from) => {
     clearSearch()
+    closeMobileMenu() // ← добавили автозакрытие мобильного меню
+
     try {
       if (window.ym && window.YM_ID) {
         const url = to.fullPath || (location.pathname + location.search)
         const referer = from && from.fullPath ? from.fullPath : undefined
+        if (window.__YM_DEBUG) console.debug('[YM] hit', url, { title: document.title, referer })
         ym(window.YM_ID, 'hit', url, {
           title: document.title,
           referer
         })
       }
     } catch (_) {}
+
+    // На каждую навигацию перезапускаем трекинг вовлеченности заново
+    initEngagementTracking()
   })
 
   // Сбрасываем при клике по любой ссылке, кроме "Загрузить еще"

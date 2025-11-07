@@ -1,0 +1,198 @@
+[33mcommit 0c0e733187adcefd5ed1ed0afa68ec08e9106c15[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: mikeSD <mikeSD2@proton.me>
+Date:   Fri Nov 7 20:43:31 2025 +0300
+
+    Re-commit without large data files
+
+ .gitignore                                         |       9 [32m+[m
+ 36465-ark-animacionnyj-serial.html                 |      12 [32m+[m[31m-[m
+ README.md                                          |       4 [32m+[m[31m-[m
+ add_random_prefix_to_ids.py                        |      83 [32m+[m
+ .../alloha_playlist.css"                           |      50 [32m+[m
+ .../alloha_playlist.js"                            |     219 [32m+[m
+ ...00\321\203\320\272\321\206\320\270\321\217.txt" |      36 [32m+[m
+ alloha/DLE 13-17.0/engine/data/alloha.config       |       1 [32m+[m
+ alloha/DLE 13-17.0/engine/data/alloha.domain       |       0
+ alloha/DLE 13-17.0/engine/data/alloha.last.file    |       1 [32m+[m
+ .../DLE 13-17.0/engine/skins/images/dle_alloha.png |     Bin [31m0[m -> [32m24467[m bytes
+ alloha/DLE 13-17.0/install.xml                     |    6705 [32m+[m
+ alloha/DLE 13-17.0/socialposting.xml               |      50 [32m+[m
+ .../engine/modules/serialy/episode.php"            |      61 [32m+[m
+ .../engine/modules/serialy/func.php"               |     153 [32m+[m
+ .../engine/modules/serialy/season.php"             |      63 [32m+[m
+ .../fullstory-metatags-DLE 13.0-15.1.xml"          |      81 [32m+[m
+ .../fullstory-metatags-DLE 15.2.xml"               |      71 [32m+[m
+ .../serialy-30.xml"                                |    1096 [32m+[m
+ .../templates/Default/serialy/episode.tpl"         |      20 [32m+[m
+ .../templates/Default/serialy/season.tpl"          |       7 [32m+[m
+ .../templates/Default/serialy/series.tpl"          |       7 [32m+[m
+ ...00\321\203\320\272\321\206\320\270\321\217.txt" |     136 [32m+[m
+ .../\320\241\321\202\320\270\320\273\320\270.txt"  |      32 [32m+[m
+ alloha/Dle 11x/engine/alloha/admin.php             |    1076 [32m+[m
+ alloha/Dle 11x/engine/alloha/ajax.php              |      98 [32m+[m
+ alloha/Dle 11x/engine/alloha/class.php             |     136 [32m+[m
+ alloha/Dle 11x/engine/alloha/func.php              |     565 [32m+[m
+ alloha/Dle 11x/engine/alloha/grab.php              |     748 [32m+[m
+ alloha/Dle 11x/engine/alloha/parse.php             |     508 [32m+[m
+ alloha/Dle 11x/engine/data/alloha.config           |       1 [32m+[m
+ alloha/Dle 11x/engine/inc/alloha.php               |      15 [32m+[m
+ alloha/install dle11.txt                           |      54 [32m+[m
+ alloha/install dle13-17x.txt                       |      77 [32m+[m
+ alloha/xfields.txt                                 |      49 [32m+[m
+ ...62\320\265\321\200\321\201\320\270\321\216.txt" |       5 [32m+[m
+ ...75\320\276\320\262\320\276\320\263\320\276.txt" |     465 [32m+[m
+ "alloha/\320\272\321\200\320\276\320\275.txt"      |      97 [32m+[m
+ alloha_today_movies.py                             |    1037 [32m+[m
+ append_movies_batch.py                             |     236 [32m+[m
+ apply_rewrites_to_movies_json.py                   |      68 [32m+[m
+ .../css/styles.css}                                |     566 [32m+[m[31m-[m
+ assets/ProsmotrZone_site/images/NewLogo.png        |     Bin [31m0[m -> [32m752940[m bytes
+ assets/ProsmotrZone_site/images/NewLogo.webp       |     Bin [31m0[m -> [32m4668[m bytes
+ assets/ProsmotrZone_site/images/favicon.ico        |     Bin [31m0[m -> [32m17660[m bytes
+ .../ProsmotrZone_site/images/finalBackground.webp  |     Bin [31m0[m -> [32m67024[m bytes
+ .../images/imdb.svg                                |       0
+ .../images/kp.svg                                  |       0
+ .../otherimages}/chevron-down-light.svg            |       0
+ .../otherimages}/chevron-down.svg                  |       0
+ .../otherimages}/noavatar.png                      |     Bin
+ .../otherimages}/quotes.svg                        |       0
+ .../otherimages}/rating.svg                        |       0
+ .../otherimages}/usp-bg.jpg                        |     Bin
+ .../webfonts/Righteous-Regular.woff2               |     Bin
+ .../webfonts/fa-solid-900.woff2                    |     Bin
+ .../webfonts/inter-400.woff2                       |     Bin
+ .../webfonts/inter-500.woff2                       |     Bin
+ .../webfonts/oswald-700.woff2                      |     Bin
+ assets/lordfilm-website/css/engine.css@v=h3qx6.css |    1691 [31m-[m
+ .../css/fontawesome.css@v=h3qx6.css                |    6854 [31m-[m
+ .../css/responsive.css@v=h3qx6.css                 |     411 [31m-[m
+ assets/lordfilm-website/images/bg.jpg              |     Bin [31m250585[m -> [32m0[m bytes
+ assets/lordfilm-website/images/favicon.svg         |       1 [31m-[m
+ assets/lordfilm-website/images/logo.svg            |       1 [31m-[m
+ assets/lordfilm-website/images/tmdb.svg            |       1 [31m-[m
+ assets/lordfilm-website/js/filter.js@v=h3qx6       |      44 [31m-[m
+ assets/lordfilm-website/js/libs.js@v=h3qx6         |     552 [31m-[m
+ assets/lordfilm-website/js/owl-carousel.js@v=h3qx6 |      34 [31m-[m
+ assets/lordfilm-website/js/share.js@v=h3qx6        |       2 [31m-[m
+ assets/lordfilm-website/soon-tv/soon-tv.js         |      47 [31m-[m
+ assets/lordfilm-website/webfonts/bb-editor.woff    |     Bin [31m10052[m -> [32m0[m bytes
+ backups/movies-data.2025-09-15_20-54-52.json       |    6674 [32m+[m[31m-[m
+ backups/movies-data.2025-09-15_21-23-03.json       |    6674 [32m+[m[31m-[m
+ backups/movies-data.2025-09-16_01-10-04.json       |    6674 [32m+[m[31m-[m
+ backups/movies-data.2025-09-19_21-34-31.json       |    7228 [32m+[m[31m-[m
+ build_related_map.py                               |     209 [32m+[m
+ check_players_by_kp.py                             |     316 [32m+[m
+ clean_movies_data.py                               |       2 [32m+[m[31m-[m
+ comment_server.py                                  |      34 [32m+[m[31m-[m
+ crons                                              |      49 [32m+[m
+ ...i3.js,engine%2Fclasses%2Fjs%2Fdle_js.js&v=h3qx6 |       2 [32m+[m[31m-[m
+ ...s.js,engine%2Fclasses%2Fjs%2Fbbcodes.js&v=h3qx6 |       2 [32m+[m[31m-[m
+ ...%2Fjscripts%2Ftiny_mce%2Ftinymce.min.js&v=h3qx6 |       2 [32m+[m[31m-[m
+ ...%2Fjscripts%2Ftiny_mce%2Ftinymce.min.js&v=h3qx6 |       2 [32m+[m[31m-[m
+ fetch_tmdb_last_movies.py                          |     192 [32m+[m[31m-[m
+ fetch_tmdb_last_movies_ddgVersion.py               |    1228 [32m+[m
+ fetch_tmdb_movies.py                               |       2 [32m+[m[31m-[m
+ films.pretty.json                                  | 2764150 [32m+++++++++++++++++[m
+ filmy.1.html                                       |     874 [31m-[m
+ filter_russia_movies.py                            |     144 [32m+[m
+ fix_missing_posters.py                             |     298 [32m+[m
+ fix_nokp_images.py                                 |     443 [32m+[m
+ fix_zero_ratings_from_tmdb.py                      |     619 [32m+[m
+ generate_vertical_shorts.py                        |     501 [32m+[m
+ gettrailer.py                                      |     190 [32m+[m[31m-[m
+ gettrailer_oldYoutubeLib.py                        |     471 [32m+[m
+ hosting_njinx_conf_not_spec_website_conf           |     161 [32m+[m
+ index.html                                         |     133 [32m+[m[31m-[m
+ indexnow_submit.py                                 |     259 [32m+[m
+ json_format_minify.py                              |      40 [32m+[m
+ krasiviye_url_njinx.txt                            |      18 [32m+[m[31m-[m
+ manage_movies.py                                   |      87 [32m+[m
+ merge_movies.py                                    |     349 [32m+[m
+ merge_ratings_by_id.py                             |     436 [32m+[m
+ merge_trailers.py                                  |       2 [32m+[m[31m-[m
+ movies-data (26).json                              |   14148 [32m+[m[31m-[m
+ movies-data (40).json                              |   14138 [32m+[m[31m-[m
+ movies-data (41).json                              |   13358 [32m+[m[31m-[m
+ movies-data_old.json                               |   13720 [32m+[m[31m-[m
+ movies-datafeef.json                               |   15474 [32m+[m[31m-[m
+ movies-datafeefe.json                              |   15426 [32m+[m[31m-[m
+ "movies-data\320\262\320\262\320\262.json"         |   10550 [32m+[m[31m-[m
+ movies-progress.txt                                |       4 [32m+[m
+ njinx.conf                                         |     143 [32m+[m[31m-[m
+ package-lock.json                                  |    3298 [32m+[m[31m-[m
+ package.json                                       |      10 [32m+[m[31m-[m
+ parse_html_to_json.py                              |       8 [32m+[m[31m-[m
+ pretty_serials.py                                  |      14 [32m+[m
+ remove_numeric_prefix_from_ids.py                  |      91 [32m+[m
+ rename_images_and_update_json.py                   |     127 [32m+[m
+ rewrite_descriptions_with_gemini.py                |     303 [32m+[m
+ rewritten-descriptions11.json                      |       6 [32m+[m
+ select_top_per_category.py                         |     215 [32m+[m
+ server.js                                          |    1611 [32m+[m[31m-[m
+ shorts/kp1322678-otel-hazbin.mp4                   |     Bin [31m0[m -> [32m25515068[m bytes
+ shorts/kp979438-grabitel-s-kryshi.mp4              |     Bin [31m0[m -> [32m24869389[m bytes
+ ...320\273\320\265\321\200 (2025)-ay7ODlJbdkM.mp4" |     Bin [31m0[m -> [32m6239231[m bytes
+ ...\320\273\320\265\321\200) 2019-KIoXCtg-WVw.mp4" |     Bin [31m0[m -> [32m7401770[m bytes
+ sort_movies.py                                     |      95 [32m+[m
+ src/App.vue                                        |     114 [32m+[m[31m-[m
+ src/app.js                                         |       5 [32m+[m[31m-[m
+ .../assets/ProsmotrZone_site/css/common.css        |     273 [32m+[m[31m-[m
+ .../css/engine.css}                                |     192 [32m+[m[31m-[m
+ .../css/fontawesome.css}                           |       4 [32m+[m[31m-[m
+ .../css/responsive.css}                            |     104 [32m+[m[31m-[m
+ .../css/styles.css}                                |     570 [32m+[m[31m-[m
+ src/assets/ProsmotrZone_site/images/NewLogo.png    |     Bin [31m0[m -> [32m744790[m bytes
+ src/assets/ProsmotrZone_site/images/NewLogo.webp   |     Bin [31m0[m -> [32m4668[m bytes
+ .../ProsmotrZone_site/images/NewLogoSquare.png     |     Bin [31m0[m -> [32m745013[m bytes
+ .../images/ProsmotrZoneLogoImage.png               |     Bin [31m0[m -> [32m224210[m bytes
+ src/assets/ProsmotrZone_site/images/favicon.ico    |     Bin [31m0[m -> [32m17660[m bytes
+ .../images/finalBackground-big.png                 |     Bin [31m0[m -> [32m5975404[m bytes
+ .../ProsmotrZone_site/images/finalBackground.webp  |     Bin [31m0[m -> [32m67024[m bytes
+ .../images/imdb.svg                                |       0
+ .../images/kp.svg                                  |       0
+ .../otherimages}/chevron-down-light.svg            |       0
+ .../otherimages}/chevron-down.svg                  |       0
+ .../otherimages}/noavatar.png                      |     Bin
+ .../otherimages}/quotes.svg                        |       0
+ .../otherimages}/rating.svg                        |       0
+ .../otherimages}/usp-bg.jpg                        |     Bin
+ .../webfonts/Righteous-Regular.woff2               |     Bin
+ .../webfonts/fa-solid-900.woff2                    |     Bin
+ .../webfonts/inter-400.woff2                       |     Bin
+ .../webfonts/inter-500.woff2                       |     Bin
+ .../webfonts/oswald-700.woff2                      |     Bin
+ .../lordfilm-website/css/common.css@v=h3qx6.css    |     865 [31m-[m
+ src/assets/lordfilm-website/images/bg.jpg          |     Bin [31m250585[m -> [32m0[m bytes
+ src/assets/lordfilm-website/images/favicon.svg     |       1 [31m-[m
+ src/assets/lordfilm-website/images/logo.svg        |       1 [31m-[m
+ src/assets/lordfilm-website/images/tmdb.svg        |       1 [31m-[m
+ src/assets/lordfilm-website/js/filter.js@v=h3qx6   |      44 [31m-[m
+ src/assets/lordfilm-website/js/libs.js@v=h3qx6     |     552 [31m-[m
+ .../lordfilm-website/js/owl-carousel.js@v=h3qx6    |      35 [31m-[m
+ src/assets/lordfilm-website/js/share.js@v=h3qx6    |       2 [31m-[m
+ src/assets/lordfilm-website/soon-tv/soon-tv.js     |      47 [31m-[m
+ .../lordfilm-website/webfonts/bb-editor.woff       |     Bin [31m10052[m -> [32m0[m bytes
+ src/assets/movieFilters.js                         |       5 [32m+[m[31m-[m
+ src/assets/seoUtils.js                             |     257 [32m+[m[31m-[m
+ src/assets/useComments.js                          |       4 [32m+[m[31m-[m
+ src/components/AppFooter.vue                       |       8 [32m+[m[31m-[m
+ src/components/AppHeader.vue                       |      61 [32m+[m[31m-[m
+ src/components/CategoryPage.vue                    |     525 [32m+[m[31m-[m
+ src/components/HomePage.vue                        |     613 [32m+[m[31m-[m
+ src/components/ItemsChunk.vue                      |      35 [32m+[m[31m-[m
+ src/components/MobileMenu.vue                      |     129 [32m+[m[31m-[m
+ src/components/MovieCard.vue                       |      71 [32m+[m[31m-[m
+ src/components/MoviePage.vue                       |    1515 [32m+[m[31m-[m
+ src/components/NotFoundPage.vue                    |      29 [32m+[m[31m-[m
+ src/components/NovinkiPage.vue                     |     257 [32m+[m
+ src/components/SearchResults.vue                   |       8 [32m+[m[31m-[m
+ src/components/TopPage.vue                         |     165 [32m+[m
+ src/components/TopsPage.vue                        |      84 [31m-[m
+ src/components/TrailerPopup.vue                    |       2 [32m+[m[31m-[m
+ test-webhookforgit                                 |      43 [32m+[m
+ testsubdomainnjinxconf                             |     122 [32m+[m
+ update_cf_realip.py                                |     104 [32m+[m
+ vite.config.js                                     |      68 [32m+[m[31m-[m
+ webhookforgit                                      |      41 [32m+[m
+ ...75\320\276\321\201\320\260\320\271\321\202.txt" |      15 [32m+[m
+ 191 files changed, 2855594 insertions(+), 76917 deletions(-)
