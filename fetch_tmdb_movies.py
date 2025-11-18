@@ -44,10 +44,8 @@ def append_to_ndjson(filename, item_data):
 
 # Ключи API
 TMDB_API_KEY = '636c87f3e6bbd33eae8ee8265c83082e'
-GEMINI_API_KEYS = [
-    "AIzaSyCrgDaMYgIZG-SKxJTJ1ShoE1YaG3mwMSw",  # Резервный ключ
-    "AIzaSyDSvSIUZooqz746y6CVA7IoGjFrDWyj5L4" # Основной ключ
-]
+from config_env import get_gemini_keys
+GEMINI_API_KEYS = get_gemini_keys()
 current_gemini_key_index = 0
 
 # URL и пути
@@ -57,7 +55,7 @@ TV_LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/tv'
 TV_DETAILS_BASE_URL = 'https://api.themoviedb.org/3/tv/'
 JSON_DATA_FILE = 'movies-data.json'
 NDJSON_OUTPUT_FILE = 'movies-data.ndjson'
-UPLOADS_DIR = 'uploads/media'
+UPLOADS_DIR = 'uploads/ImgFolder'
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 

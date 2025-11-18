@@ -12,16 +12,16 @@
         @close="clearSearch"
       />
       
-<!-- Основной контент -->
+<!-- Search Results -->
 <main class="content" v-if="!searchQuery">
   <router-view />
 </main>
       
-      <!-- Футер -->
+      <!-- Footer -->
       <AppFooter />
     </div>
     
-    <!-- Мобильное меню -->
+    <!-- Моб меню -->
     <MobileMenu 
       :is-visible="mobileMenuVisible" 
       @close="closeMobileMenu" 
@@ -97,6 +97,50 @@ const switchTheme = () => {
 const router = useRouter()
 
 onMounted(() => {
+    const debugYM = false
+
+  const YM = {
+    hit: (url, opts = {}) => {
+      try {
+        // Pixel fallback удален в production
+
+        if (window.ym && window.YM_ID) {
+          window.ym(window.YM_ID, 'hit', url, opts)
+        }
+      } catch (e) {
+        if (debugYM) console.warn('[YM] hit error', e)
+      }
+    },
+    goal: (name, params) => {
+      try {
+        if (window.ym && window.YM_ID) {
+          window.ym(window.YM_ID, 'reachGoal', name, params)
+        }
+      } catch (e) {
+        if (debugYM) console.warn('[YM] goal error', e)
+      }
+    },
+    notBounce: () => {
+      try {
+        if (window.ym && window.YM_ID) {
+          window.ym(window.YM_ID, 'notBounce')
+        }
+      } catch (e) {
+        if (debugYM) console.warn('[YM] notBounce error', e)
+      }
+    },
+    verify: () => {
+      try {
+        if (window.ym && window.YM_ID) {
+          window.ym(window.YM_ID, 'getClientID', (cid) => {
+          })
+        }
+      } catch (e) {
+        if (debugYM) console.warn('[YM] getClientID error', e)
+      }
+    }
+  }
+
   // Инициализируем тему только на клиенте
   switchTheme()
 
@@ -112,7 +156,13 @@ onMounted(() => {
   const engagement = {
     started: false,
     notBounceSent: false,
-    timers: [],
+    seconds: 0,
+    intervalId: null,
+    goalsSent: {
+      g60: false,
+      g180: false,
+      g300: false,
+    },
     removeListeners: null,
   }
 
@@ -121,65 +171,113 @@ onMounted(() => {
       engagement.removeListeners()
       engagement.removeListeners = null
     }
-    engagement.timers.forEach((t) => clearTimeout(t))
-    engagement.timers = []
+    if (engagement.intervalId) {
+      clearInterval(engagement.intervalId)
+      engagement.intervalId = null
+    }
     engagement.started = false
     engagement.notBounceSent = false
+    engagement.seconds = 0
+    engagement.goalsSent = { g60: false, g180: false, g300: false }
   }
 
   const startEngagement = () => {
-    // Запустить отслеживание вовлеченности при первом признаке активности пользователя
     if (engagement.started) return
     engagement.started = true
-
-    // Через 15с после первой активности — помечаем неотказ
-    const t1 = setTimeout(() => {
-      try {
-        if (!engagement.notBounceSent && window.ym && window.YM_ID) {
-          if (window.__YM_DEBUG) console.debug('[YM] notBounce')
-          window.ym(window.YM_ID, 'notBounce')
-          engagement.notBounceSent = true
-        }
-      } catch (_) {}
-    }, 15000)
-    engagement.timers.push(t1)
-
-    // Мягкие цели времени нахождения на странице (после начала активности)
-    const scheduleGoal = (ms, name) => {
-      const tid = setTimeout(() => {
-        try {
-          if (window.__YM_DEBUG) console.debug('[YM] goal', name)
-          window.ym && window.YM_ID && window.ym(window.YM_ID, 'reachGoal', name)
-        } catch (_) {}
-      }, ms)
-      engagement.timers.push(tid)
+    // Считаем только видимое время на вкладке
+    const tick = () => {
+      if (document.hidden) return
+      engagement.seconds += 1
+      if (!engagement.notBounceSent && engagement.seconds >= 15) {
+        YM.notBounce()
+        engagement.notBounceSent = true
+      }
+      if (!engagement.goalsSent.g60 && engagement.seconds >= 60) {
+        YM.goal('stay_60s')
+        engagement.goalsSent.g60 = true
+      }
+      if (!engagement.goalsSent.g180 && engagement.seconds >= 180) {
+        YM.goal('stay_180s')
+        engagement.goalsSent.g180 = true
+      }
+      if (!engagement.goalsSent.g300 && engagement.seconds >= 300) {
+        YM.goal('stay_300s')
+        engagement.goalsSent.g300 = true
+      }
     }
-    scheduleGoal(60000, 'stay_60s')
-    scheduleGoal(180000, 'stay_180s')
-    scheduleGoal(300000, 'stay_300s')
+    engagement.intervalId = setInterval(tick, 1000)
   }
 
   const initEngagementTracking = () => {
     // Очистить предыдущее состояние
     stopEngagement()
 
-    const onActivity = () => {
+    const onActivity = (e) => {
+      if (debugYM) console.log('[YM] activity', e && e.type)
       startEngagement()
     }
+    const onVisible = () => {
+      // когда вкладка снова стала видимой — делаем мгновенный тик
+      if (engagement.started && !document.hidden) {
+        if (!engagement.notBounceSent && engagement.seconds >= 15) {
+          YM.notBounce()
+          engagement.notBounceSent = true
+        }
+      }
+    }
     const opts = { passive: true }
-    document.addEventListener('scroll', onActivity, opts)
+    // Источники активности
     document.addEventListener('pointerdown', onActivity, opts)
+    document.addEventListener('pointermove', onActivity, opts)
+    document.addEventListener('mousemove', onActivity, opts)
     document.addEventListener('keydown', onActivity, opts)
+    document.addEventListener('touchstart', onActivity, opts)
+    document.addEventListener('touchmove', onActivity, opts)
+    window.addEventListener('scroll', onActivity, opts)
+    window.addEventListener('wheel', onActivity, opts)
+    window.addEventListener('focus', onActivity, opts)
+    document.addEventListener('visibilitychange', onVisible)
+
+    // Если уже есть смещение прокрутки (например, по якорю) — стартуем
+    if (window.scrollY > 0) {
+      startEngagement()
+    }
 
     engagement.removeListeners = () => {
-      document.removeEventListener('scroll', onActivity, opts)
       document.removeEventListener('pointerdown', onActivity, opts)
+      document.removeEventListener('pointermove', onActivity, opts)
+      document.removeEventListener('mousemove', onActivity, opts)
       document.removeEventListener('keydown', onActivity, opts)
+      document.removeEventListener('touchstart', onActivity, opts)
+      document.removeEventListener('touchmove', onActivity, opts)
+      window.removeEventListener('scroll', onActivity, opts)
+      window.removeEventListener('wheel', onActivity, opts)
+      window.removeEventListener('focus', onActivity, opts)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }
 
   // Инициализируем трекинг вовлеченности для первой страницы
   initEngagementTracking()
+
+  // Я.Метрика: отправка первого hit после монтирования (на случай, если init не засчитал)
+  try {
+    let tries = 0
+    const sendFirstHit = () => {
+      if (window.__YM_FIRST_HIT_SENT__) return
+      if (window.ym && window.YM_ID) {
+        const url = location.pathname + location.search
+        const referer = document.referrer || undefined
+        YM.hit(url, { title: document.title, referer })
+        window.__YM_FIRST_HIT_SENT__ = true
+      } else if (tries < 10) {
+        tries++
+        setTimeout(sendFirstHit, 300)
+      }
+    }
+    // подождём готовности роутера/приложения
+    setTimeout(sendFirstHit, 0)
+  } catch (_) {}
 
   router.afterEach((to, from) => {
     clearSearch()
@@ -189,11 +287,7 @@ onMounted(() => {
       if (window.ym && window.YM_ID) {
         const url = to.fullPath || (location.pathname + location.search)
         const referer = from && from.fullPath ? from.fullPath : undefined
-        if (window.__YM_DEBUG) console.debug('[YM] hit', url, { title: document.title, referer })
-        ym(window.YM_ID, 'hit', url, {
-          title: document.title,
-          referer
-        })
+        YM.hit(url, { title: document.title, referer })
       }
     } catch (_) {}
 

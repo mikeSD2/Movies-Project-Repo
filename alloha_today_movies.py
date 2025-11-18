@@ -75,7 +75,7 @@ CONFIG_PATHS = [
 ALLOHA_BASE = "https://api.apbugall.org/"
 MOVIES_JSON = WORKDIR / "movies-data.json"
 NDJSON_OUTPUT = WORKDIR / "movies-data.ndjson"
-UPLOADS_DIR = WORKDIR / "uploads" / "media"
+UPLOADS_DIR = WORKDIR / "uploads" / "ImgFolder"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Сколько страниц ленты last=movie собрать
@@ -133,7 +133,8 @@ def find_trailer_via_youtube(title, original_title, year):
 try:
     from fetch_tmdb_last_movies import GEMINI_API_KEY as _GEMINI_FROM_FETCH
     # используем ключ из fetch как дефолт, но не перетираем уже заданные ключи (для ротации через запятую)
-    os.environ["GEMINI_API_KEYS"] = os.environ.get("GEMINI_API_KEYS") or "AIzaSyCrgDaMYgIZG-SKxJTJ1ShoE1YaG3mwMSw, AIzaSyAmD3Nv6WcdBK3aoLAlARcQsvqv-RqTSCo, AIzaSyDJKKtMCmM-_YOsWZ-p2MMfwRwtwOyMXvI"
+    # GEMINI_API_KEYS should be provided via environment or config.env. See config_env.py
+    # from config_env import get_gemini_keys  # Optional: load keys if needed here
 except Exception:
     pass
 
@@ -415,7 +416,7 @@ def download_image(url: str, slug_base: str) -> Optional[str]:
                 if im.mode in ("RGBA","P"):
                     im = im.convert("RGB")
                 im.save(webp_path, "WEBP", quality=85, method=6)
-                return f"uploads/media/{webp_name}"
+                return f"uploads/ImgFolder/{webp_name}"
             except Exception:
                 # конвертация не удалась — сохраняем как есть с исходным расширением
                 ext = os.path.splitext(url.split("?")[0].split("#")[0])[-1].lower()
@@ -425,8 +426,8 @@ def download_image(url: str, slug_base: str) -> Optional[str]:
                 raw_path = UPLOADS_DIR / raw_name
                 with open(raw_path, "wb") as f:
                     f.write(b)
-                return f"uploads/media/{raw_name}"
-        return f"uploads/media/{webp_name}"
+                return f"uploads/ImgFolder/{raw_name}"
+        return f"uploads/ImgFolder/{webp_name}"
     except Exception:
         return None
 
@@ -601,7 +602,7 @@ def run_debug_dump(api_token: str):
             slug_base = slugify(title) or slugify(original_title) or hashlib.md5((title or original_title).encode("utf-8", "ignore")).hexdigest()[:10]
 
             if id_kp:
-                mid = f"kp{id_kp}-{slug_base}"
+                mid = f"{id_kp}-{slug_base}"
                 mid_origin = "kp"
             elif tmdb_id:
                 mid = f"tmdb{tmdb_id}-{slug_base}"
@@ -831,7 +832,7 @@ def main():
                 slug_base = slugify(title) or slugify(original_title) or hashlib.md5((title or original_title).encode("utf-8", "ignore")).hexdigest()[:10]
 
                 if id_kp:
-                    mid = f"kp{id_kp}-{slug_base}"
+                    mid = f"{id_kp}-{slug_base}"
                     mid_origin = "kp"
                 elif tmdb_id:
                     mid = f"tmdb{tmdb_id}-{slug_base}"

@@ -39,6 +39,7 @@
     
     <!-- Компонент трейлера -->
     <TrailerPopup 
+      v-if="showTrailerPopup"
       :is-visible="showTrailerPopup"
       :movie="movie"
       @close="closeTrailerPopup"
@@ -172,8 +173,8 @@ const showTooltip = () => {
 
     tooltipEl.innerHTML = `
       <h1>${props.movie.title} <small>${headerSmall}</small></h1>
-      <div class="richtxt">${props.movie.description}</div>
-      <ul class="contpage__list">
+      <div class="blodrich_text">${props.movie.description}</div>
+      <ul class="pagecontinue---list">
         ${props.movie.originalTitle ? `<li><span>Название:</span><span>${props.movie.originalTitle}</span></li>` : ''}
         <li><span>Год выхода:</span>${props.movie.year}</li>
         ${props.movie.country ? `<li><span>Страна:</span>${props.movie.country}</li>` : ''}
@@ -181,13 +182,13 @@ const showTooltip = () => {
         ${props.movie.director ? `<li><span>Режиссер:</span>${props.movie.director}</li>` : ''}
         ${props.movie.genres && props.movie.genres.length ? `<li><span>Жанр:</span>${props.movie.genres.join(', ')}</li>` : ''}
         ${props.movie.translation ? `<li><span>Перевод:</span>${formatTranslation(props.movie.translation)}</li>` : ''}
-        ${props.movie.kpRating || props.movie.imdbRating ? `<li class="contpage__list-rates d-flex ai-center c-gap-20">
-          ${props.movie.kpRating ? `<div class="contpage__list-rates-item kp">${props.movie.kpRating}</div>` : ''}
-          ${props.movie.imdbRating ? `<div class="contpage__list-rates-item imdb">${imdbTxt}</div>` : ''}
+        ${props.movie.kpRating || props.movie.imdbRating ? `<li class="pagecontinue---list-rates d-flex ai-center c-gap-20">
+          ${props.movie.kpRating ? `<div class="pagecontinue---list-rates-item kp">${props.movie.kpRating}</div>` : ''}
+          ${props.movie.imdbRating ? `<div class="pagecontinue---list-rates-item imdb">${imdbTxt}</div>` : ''}
         </li>` : ''}
-        ${props.movie.actors ? `<li class="contpage__list-wide"><span>В ролях:</span>${props.movie.actors}</li>` : ''}
+        ${props.movie.actors ? `<li class="pagecontinue---list-wide"><span>В ролях:</span>${props.movie.actors}</li>` : ''}
       </ul>
-      ${hasTrailer.value ? `<button class="contpage__btn-trailer js-show-trailer">Смотреть трейлер</button>` : ''}
+      ${hasTrailer.value ? `<button class="pagecontinue---btn-trailer js-show-trailer">Смотреть трейлер</button>` : ''}
     `
     
     // Добавляем обработчики событий

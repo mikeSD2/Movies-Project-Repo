@@ -23,8 +23,8 @@ def title_starts_with_digit(title: Any) -> bool:
 
 def main():
     ap = argparse.ArgumentParser(description="Добавить/обновить случайный числовой префикс (до 7 цифр) у id фильмов.")
-    ap.add_argument("-i", "--input", default="movies-data-without-pop-pretty.json", help="Входной JSON")
-    ap.add_argument("-o", "--output", default="movies-data-without-pop-pretty.updated.json", help="Выходной JSON")
+    ap.add_argument("-i", "--input", default="movies-data-sorted.json", help="Входной JSON")
+    ap.add_argument("-o", "--output", default="movies-data-sorted.updated.json", help="Выходной JSON")
     ap.add_argument("--seed", type=int, default=None, help="Seed генератора случайных чисел (опционально)")
     args = ap.parse_args()
 

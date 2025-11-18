@@ -6,7 +6,8 @@ import sys
 from collections import deque
 
 # Ваши данные для доступа к API
-API_KEY = "AIzaSyCI0qt3OOliBaM_QOztawFqmBMo5AGw_kY"
+from config_env import get_gemini_keys
+API_KEY = get_gemini_keys()[0]
 
 # Список моделей для автоматического переключения.
 MODELS = [

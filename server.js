@@ -66,6 +66,17 @@ async function createServerApp() {
       })
     );
   }
+  // Serve the real SVG favicon from root as /favicon.svg (no fake .ico)
+  app.get('/favicon.svg', (req, res) => {
+    const svgPath = path.resolve('assets/NewLord_site/images/favicon.svg');
+    if (fsSync.existsSync(svgPath)) {
+      res.type('image/svg+xml');
+      fsSync.createReadStream(svgPath).pipe(res);
+    } else {
+      res.status(404).end();
+    }
+  });
+
   function renderPreloadLinks(modules = new Set(), manifest = {}) {
     let links = "";
     const seen = new Set();
@@ -397,10 +408,18 @@ async function createServerApp() {
     const tags = origins
       .filter(Boolean)
       .filter((o) => !exists(o))
-      .map((o) => `<link rel="preconnect" href="${o}" crossorigin>`)
+      .map((o) => `<link rel=\"preconnect\" href=\"${o}\" crossorigin>\n  <link rel=\"dns-prefetch\" href=\"${o}\">`)
       .join("\n  ");
     if (!tags) return html;
     return html.replace("</head>", `  ${tags}\n</head>`);
+  }
+
+  function enforceRootFavicon(html) {
+    // Remove any existing favicon link tags
+    html = html.replace(/<link\s+(rel=\"shortcut icon\"|rel=\"icon\")[^>]*>\s*/gi, "");
+    // Inject our single root SVG favicon
+    const tag = '<link rel="icon" href="/favicon.svg" type="image/svg+xml">';
+    return html.replace("</head>", `  ${tag}\n</head>`);
   }
   function buildCategoryFeed(data, opts) {
     const {
@@ -1740,7 +1759,7 @@ async function createServerApp() {
     }
   });
 
-  // On-the-fly ресайз постеров: /img?src=/uploads/media/foo.jpg&w=360&q=70&f=webp
+  // On-the-fly ресайз постеров: /img?src=/uploads/ImgFolder/foo.jpg&w=360&q=70&f=webp
   // замена обработчика /img
   app.get("/img", async (req, res) => {
     try {
@@ -2108,14 +2127,6 @@ Sitemap: ${BASE_URL}/sitemap.xml
     );
   });
 
-  app.get("/favicon.ico", (req, res) => {
-    // res.sendFile(path.join(__dirname, "assets/ProsmotrZone_site/images/favicon.ico"));
-    res.set("Cache-Control", "public, max-age=0, must-revalidate");
-    res.type("image/x-icon");
-    res.sendFile(
-      path.join(__dirname, "assets/ProsmotrZone_site/images/favicon.ico")
-    );
-  });
 
   // SEO: sitemap.xml
   app.get("/sitemap.xml", async (req, res) => {
@@ -2150,7 +2161,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         { loc: `${BASE_URL}/multfilmy`, priority: "0.8", lastmod: siteLastmod },
         { loc: `${BASE_URL}/anime`, priority: "0.8", lastmod: siteLastmod },
         {
-          loc: `${BASE_URL}/top-all-time`,
+          loc: `${BASE_URL}/top-100`,
           priority: "0.6",
           lastmod: siteLastmod,
         },
@@ -2209,13 +2220,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
     const categories = data?.categories || {};
 
     // ВАЖНО: существующий файл в корневой папке assets
-    const defaultOgImage = `${BASE_URL}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+    const defaultOgImage = `${BASE_URL}/assets/NewLord_site/images/logo.svg`;
 
     const seo = {
       title:
-        "ProsmotrZone - смотреть фильмы и сериалы в HD качестве онлайн бесплатно",
+        "Lordfilm — смотреть новинки фильмов 2025 и сериалы онлайн бесплатно в HD 1080",
       description:
-        "На ProsmotrZone вас ждут новые фильмы, сериалы и аниме онлайн. Смотрите премьеры 2025 года, классику, рейтинговые хиты и новинки. Здесь вы можете смотреть без регистрации бесплатно в HD (720p, 1080p) без лишней рекламы. Удобный поиск и фильтры по жанрам, актёрам, годам и другим параметрам. Можете смотреть с любого устройства в любое время дня.",
+        "Ищете, где посмотреть кино? На Лордфилм вас ждут свежие хиты 2025, популярные сериалы и мультфильмы в хорошем качестве. Удобный плеер позволяет смотреть онлайн без регистрации и тормозов в Full HD 720 или 1080. Находите контент по жанрам и актерам за пару кликов. Доступно круглосуточно на любом устройстве бесплатно.",
       canonical: BASE_URL + "/",
       ogImage: defaultOgImage,
       robots: "index,follow",
@@ -2232,7 +2243,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
           "@context": "https://schema.org",
           "@type": "WebSite",
           url: `${BASE_URL}/`,
-          name: "ProsmotrZone",
+          name: "Lordfilm",
           potentialAction: {
             "@type": "SearchAction",
             target: `${BASE_URL}/?q={search_term_string}`,
@@ -2243,31 +2254,15 @@ Sitemap: ${BASE_URL}/sitemap.xml
       return seo;
     }
 
-    // Топ
-    if (path === "/top-all-time") {
-      const t = (u.searchParams.get("type") || "all").toLowerCase();
-      const label =
-        {
-          all: "фильмы и сериалы",
-          filmy: "фильмы",
-          serialy: "сериалы",
-          multfilmy: "мультфильмы",
-          anime: "аниме",
-          doramas: "дорамы",
-          turkish: "турецкие сериалы",
-        }[t] || "фильмы и сериалы";
-
-      seo.title =
-        t === "all"
-          ? "Топ всех фильмов и сериалов — ProsmotrZone"
-          : `Топ: ${label} — ProsmotrZone`;
-
+    // Топ-100 (единый заголовок и описание как на клиенте)
+    if (path === "/top-100") {
+      seo.title = "Топ-100 — лучшие фильмы и сериалы на Lordfilm";
       seo.description =
-        "Лучшие фильмы и сериалы по рейтингу IMDb и Кинопоиск на ProsmotrZone. Выбирайте и смотрите онлайн бесплатно в HD.";
-      seo.canonical = `${BASE_URL}/top-all-time`; // фиксированный canonical
+        "Топ-100 лучших фильмов и сериалов на Lordfilms по рейтингам и популярности. Смотрите онлайн бесплатно в HD.";
+      seo.canonical = `${BASE_URL}/top-100`; // фиксированный canonical
       return seo;
     }
-    if (path === "/novinki") {
+    if (false && path === "/novinki") {
       const nowY = new Date().getFullYear();
       const y =
         parseInt(u.searchParams.get("year") || String(nowY), 10) || nowY;
@@ -2285,10 +2280,10 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
       seo.title =
         cat === "all"
-          ? `Новинки ${y} — ProsmotrZone`
-          : `Новинки ${y}: ${label} — ProsmotrZone`;
+          ? `Новинки ${y} — Lordfilm`
+          : `Новинки ${y}: ${label} — Lordfilm`;
 
-      seo.description = `Свежие новинки ${y} года: ${label}. Смотрите онлайн в хорошем качестве на ProsmotrZone.`;
+      seo.description = `Свежие новинки ${y} года: ${label}. Смотрите онлайн в хорошем качестве на Lordfilm.`;
       seo.canonical = `${BASE_URL}/novinki`; // фиксированный canonical
       return seo;
     }
@@ -2358,11 +2353,11 @@ Sitemap: ${BASE_URL}/sitemap.xml
       }
       const qualStr = qual.length ? ` ${qual.join(", ")}` : "";
 
-      seo.title = `Список всех ${listSubjectGen}${qualStr} смотреть онлайн бесплатно в хорошем качестве на ProsmotrZone`;
+      seo.title = `Список всех ${listSubjectGen}${qualStr} смотреть онлайн бесплатно в хорошем качестве на Lordfilm`;
       if (pageNum > 1) {
         seo.title += ` — страница ${pageNum}`;
       }
-      seo.description = `Выбирайте для просмотра ${browseSubjectNomLower}${qualStr} с помощью удобных фильтров и смотрите в HD качестве без регистрации онлайн на ProsmotrZone.`;
+      seo.description = `Выбирайте для просмотра ${browseSubjectNomLower}${qualStr} с помощью удобных фильтров и смотрите в HD качестве без регистрации онлайн на Lordfilm.`;
 
       // canonical — нормализуем: убираем дефолтные page/limit/sort
       const usp = new URLSearchParams(u.search);
@@ -2431,7 +2426,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
       const [cat, id] = parts;
       const m = movies.find((x) => x.id === id);
       if (!m || isHidden(m)) {
-        seo.title = "Страница не найдена — ProsmotrZone";
+        seo.title = "Страница не найдена — Lordfilm";
         seo.description = "Страница не найдена.";
         seo.canonical = `${BASE_URL}${path}`;
         seo.robots = "noindex,follow";
@@ -2441,7 +2436,19 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
       seo.ogType = "video.movie";
       const year = m.year ? ` (${m.year})` : "";
-      seo.title = `${m.title}${year} смотреть онлайн бесплатно в хорошем качестве`;
+      const seTxt = (() => {
+        const parts = [];
+        if (m.season) {
+          const s = String(m.season).trim();
+          parts.push(/сезон/i.test(s) ? s : `${s} сезон`);
+        }
+        if (m.episode) {
+          const e = String(m.episode).trim();
+          parts.push(/сер(ия|ии)/i.test(e) ? e : `${e} серия`);
+        }
+        return parts.join(" ");
+      })();
+      seo.title = `${m.title}${year} смотреть онлайн бесплатно в HD качестве на Lordfilm`;
 
       const isSerial =
         m.category === "serialy" ||
@@ -2478,9 +2485,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
       const synopsis = stripTags(m.description);
       const synopsisShort = truncate(synopsis, 200);
-      const metaDesc = isSerial
-        ? `Смотреть ${typeLabel} ${m.title} все серии подряд${details}. Описание: ${synopsisShort}`
-        : `Смотреть ${typeLabel} ${m.title}${details} онлайн в отличном качестве с русской озвучкой. Описание: ${synopsisShort}`;
+      const metaDesc = `Смотреть ${typeLabel} ${m.title} с русской озвучкой${details} в отличном качестве на Лордфилм. Описание: ${synopsisShort}`;
 
       seo.description = metaDesc;
       seo.canonical = `${BASE_URL}/${m.category}/${m.id}`;
@@ -2560,7 +2565,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
     // Любая другая вложенность в известных категориях → 404
     if (parts.length > 0 && knownCats.includes(parts[0])) {
-      seo.title = "Страница не найдена — ProsmotrZone";
+      seo.title = "Страница не найдена — Lordfilm";
       seo.description = "Страница не найдена.";
       seo.canonical = `${BASE_URL}${path}`;
       seo.robots = "noindex,follow";
@@ -2569,7 +2574,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
     }
 
     // Неизвестный путь → 404
-    seo.title = "Страница не найдена — ProsmotrZone";
+    seo.title = "Страница не найдена — Lordfilm";
     seo.description = "Страница не найдена.";
     seo.canonical = `${BASE_URL}${path}`;
     seo.robots = "noindex,follow";
@@ -2587,8 +2592,8 @@ Sitemap: ${BASE_URL}/sitemap.xml
     const p = (url.split("?")[0] || "/").replace(/\/+$/, "") || "/";
     const parts = p.split("/").filter(Boolean);
     if (p === "/") return { type: "home" };
-    if (p === "/top-all-time") return { type: "tops" };
-    if (p === "/novinki") return { type: "novinki" };
+    if (p === "/top-100") return { type: "tops" };
+    // novinki route removed
     if (
       ["filmy", "serialy", "multfilmy", "anime"].includes(parts[0]) &&
       parts.length === 1
@@ -2670,7 +2675,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
     const ogPairs = [
       ["og:type", seo.ogType || "website"],
-      ["og:site_name", "ProsmotrZone"],
+      ["og:site_name", "Lordfilm"],
       ["og:locale", "ru_RU"],
       ["og:title", seo.title],
       ["og:description", seo.description],
@@ -2898,6 +2903,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
           "https://kodik-add.com",
           "https://kodikapi.com",
         ]);
+        html = enforceRootFavicon(html);
         if (seo.status === 404) res.status(404);
       } else {
         // Production режим

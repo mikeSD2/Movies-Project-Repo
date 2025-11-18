@@ -22,7 +22,7 @@ def post_indexnow(endpoint, host, key, key_location, urls, timeout=20):
 
 DEFAULT_MOVIES_JSON = 'movies-data.json'
 DEFAULT_INDEXED_FILE = os.path.join('server-data', 'indexnow-indexed.ndjson')
-DEFAULT_ENDPOINT = 'https://api.indexnow.org/indexnow'  # можно поменять на https://yandex.com/indexnow
+DEFAULT_ENDPOINT = 'https://yandex.com/indexnow'  # можно поменять на https://api.indexnow.org/indexnow
 DEFAULT_KEY_LOCATION_FMT = '{base}/%s.txt'
 
 # Поля, по которым решаем «контент изменился» (можно подстроить)
@@ -241,6 +241,13 @@ if __name__ == '__main__':
 
 
 # Как пользоваться:
+# 1) Для нового сайта просим чат сгенерить рандомную строку(нужного под скрипт формата) для indexnow которую просто помещаем в env в соответствующую переменную.
+# 2) Боевой запуск (общий endpoint — распространяет в Яндекс тоже):
+# python3 indexnow_submit.py --limit 1000 --log-sample 10
+
+
+
+
 # 3) Пробный запуск (без отправки):
 # python3 indexnow_submit.py --dry-run --limit 50 --log-sample 10
 # 4) Боевой запуск (общий endpoint — распространяет в Яндекс тоже):

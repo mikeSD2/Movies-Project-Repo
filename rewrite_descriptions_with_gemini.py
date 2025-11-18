@@ -36,22 +36,19 @@ SOURCE_JSON = "movies-data-sorted.json"
 NDJSON_OUTPUT = "rewritten-descriptions.ndjson"
 
 # Ротация ключей
-GEMINI_API_KEYS = [k.strip() for k in os.getenv("GEMINI_API_KEYS", "").split(",") if k.strip()] or [
-    "AIzaSyAmD3Nv6WcdBK3aoLAlARcQsvqv-RqTSCo",
-    "AIzaSyDJKKtMCmM-_YOsWZ-p2MMfwRwtwOyMXvI"
-]
-if not GEMINI_API_KEYS:
-    raise RuntimeError("Не заданы GEMINI_API_KEYS.")
-
+from config_env import get_gemini_keys
+GEMINI_API_KEYS = get_gemini_keys()
 current_gemini_key_index = 0
 
 MODELS = [
-     "models/gemini-2.5-pro", "models/gemini-2.5-flash", 
+    #  "models/gemini-3-pro-preview", 
+     "models/gemini-2.5-pro", "models/gemini-2.5-flash",
     # "models/gemini-2.5-flash-lite",
     # "models/gemini-2.0-flash", "models/gemini-2.0-flash-lite"
 ]
 current_model_index = 0
 RATE_LIMITS = {
+    # "models/gemini-3-pro-preview": 5, 
     "models/gemini-2.5-pro": 5, "models/gemini-2.5-flash": 10,
     # "models/gemini-2.5-flash-lite": 15,
     # "models/gemini-2.0-flash": 15, "models/gemini-2.0-flash-lite": 30,
@@ -122,7 +119,14 @@ def rewrite_description_sync(
     consec_5xx = 0
     backoff = 5
 
+    attempts = 0
+    max_attempts = 30
+    consecutive_403 = 0
+
     while True:
+        if attempts >= max_attempts:
+            print(f"    - Достигнут лимит попыток ({max_attempts}). Пропуск.")
+            return None
         if shutdown_requested:
             print("    - Операция рерайта прервана.")
             return None
@@ -161,6 +165,7 @@ def rewrite_description_sync(
 
             print("    - Не удалось извлечь текст. Переключение модели и пауза 15с...")
             current_model_index += 1
+            attempts += 1
             time.sleep(15)
             continue
 
@@ -183,10 +188,25 @@ def rewrite_description_sync(
                     else:
                         print("    - 429 дневной. Переключение модели…")
                         current_model_index += 1
+                        attempts += 1
+                    continue
+                elif status == 403:
+                    # Быстрая ротация ключа при 403, чтобы не застревать на одном ключе
+                    consecutive_403 += 1
+                    old_key_idx = current_gemini_key_index
+                    current_gemini_key_index = (current_gemini_key_index + 1) % len(GEMINI_API_KEYS)
+                    print(f"    - 403 Forbidden. Переключение API ключа #{old_key_idx + 1} -> #{current_gemini_key_index + 1}…")
+                    # Если прошлись по всем ключам для этой модели — сменим модель
+                    if consecutive_403 % len(GEMINI_API_KEYS) == 0:
+                        current_model_index += 1
+                        print("    - 403 на всех ключах для текущей модели. Переключение модели…")
+                    attempts += 1
+                    time.sleep(3)
                     continue
                 elif status in [404, 400]:
                     print(f"    - Ошибка {status}. Переключение модели…")
                     current_model_index += 1
+                    attempts += 1
                     continue
                 elif status >= 500:
                     consec_5xx += 1
@@ -194,6 +214,7 @@ def rewrite_description_sync(
                     if consec_5xx >= 3:
                         print("    - 5xx три раза подряд. Переключение модели…")
                         current_model_index += 1
+                        attempts += 1
                         consec_5xx = 0
                         backoff = 5
                     else:
@@ -204,6 +225,7 @@ def rewrite_description_sync(
                     continue
 
             print(f"    - Сеть/транспорт: {e}. Пауза 15с…")
+            attempts += 1
             time.sleep(15)
             continue
 

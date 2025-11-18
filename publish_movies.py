@@ -9,6 +9,7 @@ from datetime import datetime
 JSON_DATA_FILE = 'movies-data.json'
 NDJSON_SOURCE_FILE = 'movies-data.ndjson'
 BACKUP_DIR = 'backups'
+PUBLISH_LOG_FILE = 'movies-publish-history.ndjson'  # append-only NDJSON log
 PRETTY_JSON = True # True - для читаемости, False - для максимальной компактности
 
 # --- АТОМАРНАЯ ЗАПИСЬ ---
@@ -28,6 +29,24 @@ def save_data_atomically(filename, data):
         temp_path = tf.name
     os.replace(temp_path, filename)
     print(f"  - Данные атомарно сохранены в {filename}.")
+
+# --- ЛОГИРОВАНИЕ ПУБЛИКАЦИИ ---
+def append_to_publish_log(added_movies, log_file=PUBLISH_LOG_FILE):
+    """
+    Добавляет опубликованные записи в append-only NDJSON лог.
+    Перед каждой записью вставляет строку-комментарий с датой и временем публикации.
+    """
+    if not added_movies:
+        return
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        with open(log_file, 'a', encoding='utf-8') as lf:
+            lf.write(f"# published_at: {timestamp}, count: {len(added_movies)}\n")
+            for movie in added_movies:
+                lf.write(json.dumps(movie, ensure_ascii=False) + "\n")
+        print(f"  - В лог {log_file} добавлено {len(added_movies)} записей (одним пакетом).")
+    except (OSError, IOError) as e:
+        print(f"Предупреждение: не удалось записать лог публикации ({log_file}): {e}")
 
 def main():
     """
@@ -88,16 +107,21 @@ def main():
     # Проверяем уникальность по ID, чтобы избежать дублей при повторном запуске
     existing_ids = {movie['id'] for movie in existing_data['movies']}
     added_count = 0
+    added_movies = []
     for movie in new_movies:
         if movie.get('id') not in existing_ids:
             existing_data['movies'].append(movie)
             existing_ids.add(movie['id'])
             added_count += 1
+            added_movies.append(movie)
             
     print(f"Добавлено {added_count} уникальных записей.")
 
     # 6. Сохраняем объединенный файл
     save_data_atomically(JSON_DATA_FILE, existing_data)
+
+    # 6.1. Пишем лог публикации только для действительно добавленных записей
+    append_to_publish_log(added_movies)
 
     # 7. Очищаем ndjson файл
     open(NDJSON_SOURCE_FILE, 'w').close()

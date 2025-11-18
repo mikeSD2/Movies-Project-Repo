@@ -56,6 +56,9 @@ movies-data.json.*
 kinopoisk_movies_*.txt
 progress.json
 progress_last_movies.json
+token.json
+tmp_rovodev_*.py
+client_secret_*.json
 *.bak
 *.backup
 *.tmp

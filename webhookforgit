@@ -4,7 +4,7 @@ set -euxo pipefail
 export HOME=/root
 export PATH="/www/server/nodejs/bin:/usr/local/bin:$PATH"
 
-PROJECT_DIR="/www/wwwroot/prosmotrzone.online"
+PROJECT_DIR="/www/wwwroot/kino.lordfilmshd-2026.ru"
 BRANCH="${1:-main}"
 REPO_URL="https://github.com/mikeSD2/Movies-Project-Repo.git"
 

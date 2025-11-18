@@ -6,8 +6,8 @@
       id="trl"
       @click.self="closeTrailer"
     >
-    <div class="trailer-popup__inner">
-      <div class="trailer-popup__video video-inside video-responsive">
+    <div class="youtube-trail-pop__inner">
+      <div class="youtube-trail-pop__video video-inside video-responsive">
         <iframe 
           v-if="trailerUrl"
           :src="trailerUrl" 
@@ -18,19 +18,19 @@
           loading="lazy"
         ></iframe>
       </div>
-      <div class="trailer-popup__content">
+      <div class="youtube-trail-pop__content">
         <router-link 
           :to="`/${movie.category}/${movie.id}`" 
-          class="trailer-popup__btn btn fal fa-play"
+          class="youtube-trail-pop__btn btn fal fa-play"
           @click="closeTrailer"
         >
           Смотреть онлайн
         </router-link>
-        <div class="richtxt" v-html="movie.descriptionHtml || movie.description"></div>
+        <div class="blodrich_text" v-html="movie.descriptionHtml || movie.description"></div>
       </div>
     </div>
     <button 
-      class="trailer-popup__close btn-nobg btn-square fal fa-times"
+      class="youtube-trail-pop__close btn-nobg btn-square fal fa-times"
       @click="closeTrailer"
     ></button>
     </div>
@@ -82,9 +82,9 @@ const closeTrailer = () => {
 // Управление классом body
 watch(() => props.isVisible, (newVal) => {
   if (newVal) {
-    document.body.classList.add('trailer-popup-opened')
+    document.body.classList.add('youtube-trail-pop-opened')
   } else {
-    document.body.classList.remove('trailer-popup-opened')
+    document.body.classList.remove('youtube-trail-pop-opened')
   }
 })
 

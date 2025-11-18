@@ -123,10 +123,10 @@ export function updateMovieSeo(movie, categoryTitle) {
       ? "фильм"
       : movie.category === "serialy" || movie.category === "serials"
       ? "сериал"
-      : movie.category === "multfilmy"
-      ? "мультфильм"
       : movie.category === "anime"
       ? "аниме"
+      : movie.category === "multfilmy"
+      ? "мультфильм"
       : "фильм";
 
   const metaParts = [];
@@ -146,12 +146,18 @@ export function updateMovieSeo(movie, categoryTitle) {
   const synopsis = stripTags(movie.description || "");
   const synopsisShort = truncateText(synopsis, 200);
 
-  const titleFull = `${movie.title}${
-    movie.year ? ` (${movie.year})` : ""
-  } смотреть онлайн бесплатно в хорошем качестве`;
-  const desc = isSerial
-    ? `Смотреть ${typeLabel} ${movie.title} все серии подряд${details}. Описание: ${synopsisShort}`
-    : `Смотреть ${typeLabel} ${movie.title}${details} онлайн в отличном качестве с русской озвучкой. Описание: ${synopsisShort}`;
+  const seParts = [];
+if (movie.season) {
+  const s = String(movie.season).trim();
+  seParts.push(/сезон/i.test(s) ? s : `${s} сезон`);
+}
+if (movie.episode) {
+  const e = String(movie.episode).trim();
+  seParts.push(/сер(ия|ии)/i.test(e) ? e : `${e} серия`);
+}
+const seasonEpisodeText = seParts.join(" ");
+const titleFull = `${movie.title}${movie.year ? ` (${movie.year})` : ""} смотреть онлайн бесплатно в HD качестве на Lordfilm`;
+  const desc = `Смотреть ${typeLabel} ${movie.title} с русской озвучкой${details} в отличном качестве на Лордфилм. Описание: ${synopsisShort}`;
 
   const posterAbs = movie.image
     ? movie.image.startsWith("http")
@@ -161,7 +167,7 @@ export function updateMovieSeo(movie, categoryTitle) {
           origin
         ).href
     : undefined;
-  const logoAbs = `${origin}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+  const logoAbs = `${origin}/assets/NewLord_site/images/logo.svg`;
 
   document.title = titleFull;
   setMeta("description", desc);

@@ -230,7 +230,7 @@ export function useComments(movieId) {
 
       const recaptchaDiv = document.createElement("div")
       recaptchaDiv.className = "g-recaptcha"
-      recaptchaDiv.setAttribute("data-sitekey", "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4")
+      recaptchaDiv.setAttribute("data-sitekey", "6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN")
       recaptchaDiv.setAttribute("data-theme", "light")
       recaptchaDiv.setAttribute("data-language", "ru")
 
@@ -238,7 +238,7 @@ export function useComments(movieId) {
       if (recaptchaContainer) {
         recaptchaContainer.appendChild(recaptchaDiv)
         window.grecaptcha.render(recaptchaDiv, {
-          sitekey: "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4",
+          sitekey: "6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN",
           theme: "light",
           language: "ru",
         })

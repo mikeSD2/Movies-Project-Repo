@@ -7,7 +7,7 @@ def main():
     g.add_argument("--minify", action="store_true", help="Сжать JSON в одну строку")
     p.add_argument("--in", dest="inp", required=True, help="Путь к исходному JSON")
     p.add_argument("--out", dest="out", help="Путь к выходному JSON")
-    p.add_argument("--indent", type=int, default=2, help="Отступ для --pretty (по умолчанию 2)")
+    p.add_argument("--inde22", type=int, default=2, help="Отступ для --pretty (по умолчанию 2)")
     args = p.parse_args()
 
     src = args.inp

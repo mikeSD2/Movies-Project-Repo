@@ -1,8 +1,8 @@
 <template>
   <div class="items-in-grid count-items">
     <section class="sect ignore-select">
-      <div class="sect___header d-flex ai-center">
-        <h1 class="sect___title flex-1">
+      <div class="section--header d-flex ai-center">
+        <h1 class="section--title flex-1">
           {{ h1Title }}
         </h1>
         <div class="filters d-flex c-gap-10" style="margin-left: auto">
@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <div class="sect___content items-in-grid">
+      <div class="section--content items-in-grid">
         <MovieCard v-for="movie in items" :key="movie.id" :movie="movie" />
         <div v-if="loading && items.length === 0" class="tops__loader">
           Загрузка…
@@ -30,7 +30,7 @@
       </div>
 
       <div class="pagination ignore-select d-flex jc-center" v-if="hasMore">
-        <div class="page-nav__btn-loader d-flex jc-center ai-center w-100">
+        <div class="Pnavigation--btn-loader d-flex jc-center ai-center w-100">
           <a
             href="#"
             @click.prevent="!loading && loadMore()"
@@ -176,9 +176,9 @@ watch([categoryType, year], () => {
 function updateNovinkiSeo() {
   if (typeof window === "undefined") return;
   const origin = window.location.origin;
-  const logoAbs = `${origin}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+  const logoAbs = `${origin}/assets/NewLord_site/images/logo.svg`;
   const title = `Смотреть онлайн НОВИНКИ мира кино и сериалов ${yearTitle.value} года`;
-  const desc = `Свежие новинки ${yearTitle.value} года: ${categoryLabel.value}. Смотрите онлайн бесплатно в хорошем качестве на ProsmotrZone.`;
+  const desc = `Свежие новинки ${yearTitle.value} года: ${categoryLabel.value}. Смотрите онлайн бесплатно в хорошем качестве на Lordfilm.`;
   document.title = title;
   setCanonical(origin + "/novinki"); // фиксируем каноникал
   setMeta("robots", "index,follow");
@@ -215,7 +215,7 @@ function onCategoryChange(next) {
   color: #666;
   font-size: 16px;
 }
-.page-nav__btn-loader a.disabled {
+.Pnavigation--btn-loader a.disabled {
   pointer-events: none;
   opacity: 0.6;
 }
@@ -240,7 +240,7 @@ function onCategoryChange(next) {
   box-shadow: 0 0 0 2px rgba(56, 190, 56, 0.2);
 }
 @media (max-width: 600px) {
-  .sect___header {
+  .section--header {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;

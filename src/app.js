@@ -9,8 +9,7 @@ const routes = [
   { path: '/serialy', component: () => import('./components/CategoryPage.vue'), props: { category: 'serialy' } },
   { path: '/multfilmy', component: () => import('./components/CategoryPage.vue'), props: { category: 'multfilmy' } },
   { path: '/anime', component: () => import('./components/CategoryPage.vue'), props: { category: 'anime' } },
-  { path: '/novinki', component: () => import('./components/NovinkiPage.vue') },
-  { path: '/top-all-time', component: () => import('./components/TopPage.vue') },
+  { path: '/top-100', component: () => import('./components/Top100Page.vue') },
   { path: '/:category/:id', component: () => import('./components/MoviePage.vue'), props: true },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('./components/NotFoundPage.vue') }
 ]
@@ -37,15 +36,17 @@ export function createApp(isServer = false, url = '/') {
           }
         }
         // Топы
-        else if (to.path === '/top-all-time') {
+        else if (to.path === '/top-100') {
           const t = String(to.query.type || 'all')
-          const r = await fetch(`/api/top?type=${encodeURIComponent(t)}&limit=24&offset=0`)
+          const r = await fetch(`/api/top?type=${encodeURIComponent(t)}&limit=100&offset=0`)
           if (r.ok) {
             const j = await r.json()
             window.__TOP_FEED__ = {
+              // для /top-100 хватит items (ограничим 100 на сервере)
+
               items: j.items,
               total: j.total,
-              limit: 24,
+              limit: 100,
               offset: 0,
               type: t
             }

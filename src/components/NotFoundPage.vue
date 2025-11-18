@@ -17,7 +17,7 @@ onMounted(() => {
   if (typeof window === "undefined") return
   const origin = window.location.origin
   const url = origin + window.location.pathname
-  document.title = "Страница не найдена — ProsmotrZone"
+  document.title = "Страница не найдена — Lordfilm"
   setMeta("description", "Страница не найдена.")
   setMeta("robots", "noindex,follow")
   setCanonical(url)
@@ -34,7 +34,7 @@ onMounted(() => {
   text-align: center;
   padding: 20px;
   background: none;
-  color: var(--tt);
+  color: var(--the-tt);
   gap: 12px;
 }
 
@@ -49,14 +49,14 @@ h2 {
   font-size: clamp(1.4rem, 4vw, 2rem);
   margin: 0;
   font-weight: 500;
-  color: var(--tt);
+  color: var(--the-tt);
 }
 
 p {
   font-size: clamp(1rem, 2.2vw, 1.15rem);
   margin: 0 0 18px 0;
   max-width: 600px;
-  color: var(--tt-fade);
+  color: var(--the-tt-fade);
 }
 
 .home-link {

@@ -1,5 +1,5 @@
 "addtrailersscript"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 python3 gettrailer.py
 python3 merge_trailers.py
 
@@ -9,20 +9,20 @@ cd .Recycle_bin
 rm -rf *
 
 "addoldfilmsssss"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 python3 rewrite_descriptions_local.py
 
 "server reload"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 kill $(lsof -t -i:3002)
 npm run start
 
 "Add_new_films"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 python3 fetch_tmdb_last_movies.py
 
 "publish_added"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 python3 publish_movies.py
 python3 publish_rewritten_to_movies_data.py
 python3 replace_paragraphs.py
@@ -36,7 +36,7 @@ kill $(lsof -t -i:3002)
 npm run start
 
 "publish_added_new"
-cd /www/wwwroot/prosmotrzone.online
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
 python3 append_movies_batch.py
 python3 publish_movies.py
 python3 build_related_map.py
@@ -47,3 +47,31 @@ python3 seasons-update-publish.py
 публикация в indexnow
 kill $(lsof -t -i:3002)
 npm run start
+
+
+
+# batch
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
+python3 append_movies_batch.py
+python3 build_related_map.py
+python3 popularity-update.py
+python3 popularity-update-publish.py
+python3 seasons-update.py
+python3 seasons-update-publish.py
+PATH=/www/server/nvm/versions/node/v24.11.1/bin:/usr/bin:/bin HOME=/root PM2_HOME=/root/.pm2 NO_COLOR=1
+FORCE_COLOR=0 pm2 reload prosmotrzone --update-env --no-color
+python3 indexnow_submit.py --limit 1000 --log-sample 10
+
+
+# alloha
+cd /www/wwwroot/kino.lordfilmshd-2026.ru
+python3 alloha_today_movies.py
+python3 publish_movies.py
+python3 build_related_map.py
+python3 popularity-update.py
+python3 popularity-update-publish.py
+python3 seasons-update.py
+python3 seasons-update-publish.py
+PATH=/www/server/nvm/versions/node/v24.11.1/bin:/usr/bin:/bin HOME=/root PM2_HOME=/root/.pm2 NO_COLOR=1
+FORCE_COLOR=0 pm2 reload prosmotrzone --update-env --no-color
+python3 indexnow_submit.py --limit 1000 --log-sample 10

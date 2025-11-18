@@ -73,14 +73,15 @@ def append_to_ndjson(filename, item_data):
 
 # Ключи API
 TMDB_API_KEY = '636c87f3e6bbd33eae8ee8265c83082e'
-GEMINI_API_KEY = "AIzaSyCrgDaMYgIZG-SKxJTJ1ShoE1YaG3mwMSw"
+from config_env import get_gemini_keys
+GEMINI_API_KEY = get_gemini_keys()[0]
 
 # URL и пути
 LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/movie'
 DETAILS_BASE_URL = 'https://api.themoviedb.org/3/movie/'
 JSON_DATA_FILE = 'movies-data.json'
 NDJSON_OUTPUT_FILE = 'movies-data.ndjson'
-UPLOADS_DIR = 'uploads/media'
+UPLOADS_DIR = 'uploads/ImgFolder'
 
 # рядом с остальными URL/путями
 TV_LIST_BASE_URL = 'https://api.themoviedb.org/3/discover/tv'
@@ -124,12 +125,14 @@ COUNTRY_TRANSLATION = {
 
 # Настройки для Gemini API
 MODELS = [
-    "models/gemini-2.5-flash", "models/gemini-2.5-pro", 
+    # "models/gemini-3-pro-preview", 
+    "models/gemini-2.5-pro", "models/gemini-2.5-flash", 
     # "models/gemini-2.5-flash-lite", "models/gemini-2.0-flash", "models/gemini-2.0-flash-lite"
 ]
 current_model_index = 0
 RATE_LIMITS = {
-    "models/gemini-2.0-pro": 5, "models/gemini-2.5-flash": 10, 
+    # "models/gemini-3-pro-preview": 5, 
+    "models/gemini-2.5-pro": 5, "models/gemini-2.5-flash": 10, 
     # "models/gemini-2.5-flash-lite": 15, "models/gemini-2.5-flash": 15, "models/gemini-2.0-flash-lite": 30,
 }
 rate_windows = {idx: deque() for idx in range(len(MODELS))}

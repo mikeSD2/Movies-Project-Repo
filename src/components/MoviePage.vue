@@ -4,27 +4,28 @@
     class="light-off-overlay"
     @click="isLightOff = false"
   ></div>
-  <div v-if="movie" class="speedbar ws-nowrap">
-    <router-link to="/">ProsmotrZone</router-link> »
+  <div v-if="movie" class="panel-of-speed ws-nowrap">
+    <router-link to="/">Lordfilms</router-link> »
     <router-link :to="`/${movie.category}`">{{ categoryTitle }}</router-link> »
     {{ movie.title }}
   </div>
 
   <div class="items-in-grid count-items">
     <article v-if="movie && !isLoading" class="page ignore-select">
-      <div class="contpage__bg">
-        <div class="contpage__cols">
-          <div class="contpage__cols-left">
-            <div class="contpage__main" :class="{ 'is-narrow-poster': isSmallPoster }">
-              <div class="contpage__header">
+      <div class="pagecontinue---bg">
+        <div class="pagecontinue---cols">
+          <div class="pagecontinue---cols-left">
+            <div class="pagecontinue---main" :class="{ 'is-narrow-poster': isSmallPoster }">
+              <div class="pagecontinue---header">
                 <h1>
                   {{ movie.title }}
                   <small>{{ h1Text }}</small>
                 </h1>
+                <!--Подсказка: кликните по жанрам или странам ниже, чтобы найти похожие фильмы.-->
               </div>
 
-              <div class="contpage__poster">
-                <div class="contpage__img img-block ratio-2-3 img-mask" :class="{ 'is-narrow': isSmallPoster }">
+              <div class="pagecontinue---poster">
+                <div class="pagecontinue---img img-block ratio-2-3 img-mask" :class="{ 'is-narrow': isSmallPoster }">
                   <img
                     :alt="movie.title"
                     :src="imageUrl"
@@ -44,10 +45,10 @@
                   </div>
                 </div>
                 <div
-                  class="contpage__rating-ext d-flex ai-center jc-space-between"
+                  class="pagecontinue---ext-rating d-flex ai-center jc-space-between"
                 >
                   <div
-                    class="contpage__ratingscore-ring pi-center p-relative bdrs-50 ratio-1-1"
+                    class="pagecontinue---ratingscore-ring pi-center p-relative bdrs-50 ratio-1-1"
                     style="--p: 100%"
                   >
                     {{ calculatedRating }}
@@ -83,8 +84,8 @@
                 </div>
               </div>
 
-              <div class="contpage__info">
-                <div class="contpage__text p-relative clearfix">
+              <div class="pagecontinue---info">
+                <div class="pagecontinue---text p-relative clearfix">
                   <div
                     ref="descrScrollRef"
                     :class="[
@@ -98,7 +99,7 @@
                   >
                     <div
                       ref="descrContentRef"
-                      class="richtxt p-relative movie-descr"
+                      class="blodrich_text p-relative movie-descr"
                     >
                       <div
                         v-if="movie.descriptionHtml"
@@ -137,7 +138,7 @@
                   Свернуть описание
                 </button> -->
 
-                <ul class="contpage__list">
+                <ul class="pagecontinue---list">
                   <li v-if="movie.originalTitle">
                     <span>Название:</span>
                     <span>{{ movie.originalTitle }}</span>
@@ -201,22 +202,22 @@
                   </li>
                   <li
                     v-if="movie.kpRating || movie.imdbRating"
-                    class="contpage__list-rates d-flex ai-center c-gap-20"
+                    class="pagecontinue---list-rates d-flex ai-center c-gap-20"
                   >
                     <div
                       v-if="movie.kpRating"
-                      class="contpage__list-rates-item kp"
+                      class="pagecontinue---list-rates-item kp"
                     >
                       {{ movie.kpRating }}
                     </div>
                     <div
                       v-if="movie.imdbRating"
-                      class="contpage__list-rates-item imdb"
+                      class="pagecontinue---list-rates-item imdb"
                     >
                       {{ formatRating(movie.imdbRating) }}
                     </div>
                   </li>
-                  <li v-if="movie.actors" class="contpage__list-wide">
+                  <li v-if="movie.actors" class="pagecontinue---list-wide">
                     <span>В ролях:</span>
                     <template v-for="(actor, index) in actorsListLimited" :key="actor">
                       <span class="actor-name">{{ actor }}</span><span v-if="index < actorsListLimited.length - 1">, </span>
@@ -227,20 +228,21 @@
               </div>
             </div>
 
-            <h2 class="contpage__subtitle">
+            <h2 class="pagecontinue---subtitle">
               {{ h2Text }}
             </h2>
           </div>
         </div>
 
         <!-- Плеер -->
-        <div class="contpage__cols">
+        <div class="pagecontinue---cols">
           <div
-            class="contpage__cols-left contpage__player tabs-block nl"
+            class="pagecontinue---cols-left pagecontinue---player tabs-block nl"
             id="player-container"
             :class="{ 'player-overlay': isLightOff }"
           >
-            <div class="contpage__player-controls d-flex ai-center p-relative">
+            <div class="pagecontinue---player-controls d-flex ai-center p-relative">
+              <!--Совет: если плеер не запускается — переключите вкладку «Плеер 1/2/3».-->
               <div
                 class="tabs-block__select d-flex flex-1"
                 v-if="hasWorkingPlayer"
@@ -256,9 +258,9 @@
                 </template>
               </div>
               <div
-                class="contpage__complaint d-flex ai-center jc-space-between c-gap-20"
+                class="pagecontinue---complaint d-flex ai-center jc-space-between c-gap-20"
               >
-                <label class="contpage__light-button has-checkbox" for="light">
+                <label class="pagecontinue---light-button has-checkbox" for="light">
                   <input
                     id="light"
                     name="light"
@@ -349,10 +351,10 @@
             </div>
 
             <div
-              class="contpage__player-bottom d-flex ai-center jc-space-between r-gap-20 c-gap-20"
+              class="pagecontinue---player-bottom d-flex ai-center jc-space-between r-gap-20 c-gap-20"
             >
-              <div class="contpage__fav p-relative ml-auto"></div>
-              <div class="contpage__likes d-flex fa-inside-1.3x">
+              <div class="pagecontinue---fav p-relative ml-auto"></div>
+              <div class="pagecontinue---likes d-flex fa-inside-1.3x">
                 <a
                   class="page-rate-btn"
                   :class="{
@@ -387,11 +389,11 @@
         </div>
 
         <!-- Комментарии -->
-        <div class="contpage__cols">
-          <div class="contpage__cols-left">
-            <div class="contpage__comments">
-              <div class="sect___title">Комментарии ({{ commentsCount }})</div>
-              <div class="contpage__comments-info fal fa-exclamation-circle">
+        <div class="pagecontinue---cols">
+          <div class="pagecontinue---cols-left">
+            <div class="pagecontinue---comments">
+              <div class="section--title">Комментарии ({{ commentsCount }})</div>
+              <div class="pagecontinue---comments-info fal fa-exclamation-circle">
                 Минимальная длина комментария - 50 знаков. Комментарии
                 модерируются
               </div>
@@ -399,16 +401,16 @@
               <!-- Main Comment Form Container -->
               <div
                 v-if="!replyToCommentId"
-                class="contpage__ac"
-                id="main-comment-form"
+                class="pagecontinue---ac"
+                id="main-the_comment-form"
               >
                 <form id="dle-comments-form" @submit.prevent="submitComment">
                   <div
-                    class="comment-form serv form ignore-select comment-toggle"
+                    class="the_comment-form serv form ignore-select comment-toggle"
                   >
-                    <div class="comment-form__header d-flex ai-center">
+                    <div class="form_for-comment--header d-flex ai-center">
                       <input
-                        class="comment-form__input flex-grow-1"
+                        class="form_for-comment--input flex-grow-1"
                         id="name"
                         maxlength="35"
                         name="name"
@@ -418,7 +420,7 @@
                         required
                       />
                       <input
-                        class="comment-form__input flex-grow-1"
+                        class="form_for-comment--input flex-grow-1"
                         id="mail"
                         maxlength="35"
                         name="mail"
@@ -427,7 +429,7 @@
                         v-model="commentForm.email"
                       />
                     </div>
-                    <div class="comment-form__editor p-relative">
+                    <div class="form_for-comment--editor p-relative">
                       <div class="bb-editor">
                         <textarea
                           cols="70"
@@ -452,13 +454,13 @@
                         <div
                           class="g-recaptcha"
                           data-language="ru"
-                          data-sitekey="6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
+                          data-sitekey="6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN"
                           data-theme="light"
                         ></div>
                       </div>
                     </div>
                     <button
-                      class="comment-form__btn"
+                      class="form_for-comment--btn"
                       name="submit"
                       type="submit"
                       :disabled="
@@ -481,7 +483,7 @@
               <div v-if="comments.length === 0" class="message-info">
                 Комментариев еще нет. Вы можете стать первым!
               </div>
-              <div class="contpage__comments-list" id="contpage__comments-list">
+              <div class="pagecontinue---comments-list" id="pagecontinue---comments-list">
                 <div id="dle-ajax-comments">
                   <div
                     v-for="comment in processedComments"
@@ -505,7 +507,7 @@
                       <div class="coment__text">{{ comment.comment }}</div>
                       <div class="coment__tools">
                         <div
-                          class="coment__rating"
+                          class="ratingsOnComment"
                           :data-comment-id="comment.id"
                         >
                           <span class="ratingtypeplusminus">{{
@@ -514,7 +516,7 @@
                               : comment.rating
                           }}</span>
                           <a
-                            class="coment__rating-btn thelike"
+                            class="ratingsOnComment-btn thelike"
                             href="#"
                             @click.prevent="voteComment(comment.id, 'like')"
                             :class="{
@@ -525,7 +527,7 @@
                             <span class="fal fa-thumbs-up"></span>
                           </a>
                           <a
-                            class="coment__rating-btn thedislike"
+                            class="ratingsOnComment-btn thedislike"
                             href="#"
                             @click.prevent="voteComment(comment.id, 'dislike')"
                             :class="{
@@ -555,11 +557,11 @@
                         @submit.prevent="submitComment"
                       >
                         <div
-                          class="comment-form serv form ignore-select comment-toggle"
+                          class="the_comment-form serv form ignore-select comment-toggle"
                         >
-                          <div class="comment-form__header d-flex ai-center">
+                          <div class="form_for-comment--header d-flex ai-center">
                             <input
-                              class="comment-form__input flex-grow-1"
+                              class="form_for-comment--input flex-grow-1"
                               maxlength="35"
                               name="name"
                               placeholder="Ваше имя"
@@ -568,7 +570,7 @@
                               required
                             />
                             <input
-                              class="comment-form__input flex-grow-1"
+                              class="form_for-comment--input flex-grow-1"
                               maxlength="35"
                               name="mail"
                               placeholder="Ваш e-mail (необязательно)"
@@ -576,7 +578,7 @@
                               v-model="commentForm.email"
                             />
                           </div>
-                          <div class="comment-form__editor p-relative">
+                          <div class="form_for-comment--editor p-relative">
                             <div class="bb-editor">
                               <textarea
                                 cols="70"
@@ -602,14 +604,14 @@
                               <div
                                 class="g-recaptcha"
                                 data-language="ru"
-                                data-sitekey="6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
+                                data-sitekey="6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN"
                                 data-theme="light"
                               ></div>
                             </div>
                           </div>
-                          <div class="comment-form__actions">
+                          <div class="form_for-comment--actions">
                             <button
-                              class="comment-form__btn"
+                              class="form_for-comment--btn"
                               name="submit"
                               type="submit"
                               :disabled="
@@ -620,7 +622,7 @@
                               Отправить
                             </button>
                             <button
-                              class="comment-form__btn cancel-btn"
+                              class="form_for-comment--btn cancel-btn"
                               type="button"
                               @click.prevent="cancelReply"
                             >
@@ -638,9 +640,10 @@
         </div>
 
         <!-- Похожие фильмы -->
-        <div v-if="relatedMovies.length" class="contpage__related carou">
+        <div v-if="relatedMovies.length" class="pagecontinue---related carou">
           <div class="carou__caption">Смотрите также:</div>
-          <div class="contpage__content carousel-grid">
+          <!--Подборка формируется автоматически на основе жанров и года.-->
+          <div class="pagecontinue---content karuselMy-grid">
             <MovieCard
               v-for="(relatedMovie, idx) in relatedMovies"
               :key="relatedMovie.id"
@@ -951,14 +954,14 @@ const h1Text = computed(() => {
   const m = movie.value;
   if (!m) return "";
   const seasonEpisode = [m.season, m.episode].filter(Boolean).join(" ");
-  const year = m.year ? String(m.year) : "";
+  const year = m.year ? `(${m.year})` : "";
   if (isSerialLike.value) {
-    // Для сериалов и аниме
+    // Для сериалов и аниме: "сериал (2025) смотреть онлайн 1 сезон 1 серия"
     return seasonEpisode
-      ? `сериал смотреть онлайн ${seasonEpisode} (${year})`
-      : `сериал смотреть онлайн (${year})`;
+      ? `сериал ${year} смотреть онлайн ${seasonEpisode}`
+      : `сериал ${year} смотреть онлайн`;
   }
-  // Для фильмов и мультфильмов
+  // Для фильмов и мультфильмов: "фильм (2025) смотреть онлайн"
   return `фильм ${year} смотреть онлайн`;
 });
 
@@ -967,8 +970,13 @@ const h2Text = computed(() => {
   if (!m) return "";
   const year = m.year ? String(m.year) : "";
   const labelLower = categoryLabel.value || "фильм";
-  const label = labelLower ? labelLower.slice(0, 1).toUpperCase() + labelLower.slice(1) : "Фильм";
-  return `${label} ${year} ${m.title} смотреть онлайн в качестве hd 1080 бесплатно`;
+  const isSerial = isSerialLike.value;
+  if (isSerial) {
+    // "Смотреть онлайн сериал 2025 Название все серии подряд бесплатно в хорошем качестве hd 720 или 1080"
+    return `Смотреть онлайн сериал ${year} ${m.title} все серии подряд бесплатно в хорошем качестве hd 720 или 1080`;
+  }
+  // Для остальных категорий
+  return `Смотреть онлайн ${labelLower} ${year} ${m.title} бесплатно в хорошем качестве hd 720 или 1080`;
 });
 
 // Функция для правильного формирования пути к изображению
@@ -2248,7 +2256,7 @@ const recreateRecaptcha = async () => {
     recaptchaDiv.className = "g-recaptcha";
     recaptchaDiv.setAttribute(
       "data-sitekey",
-      "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4"
+      "6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN"
     );
     recaptchaDiv.setAttribute("data-theme", "light");
     recaptchaDiv.setAttribute("data-language", "ru");
@@ -2260,7 +2268,7 @@ const recreateRecaptcha = async () => {
 
       // Рендерим reCAPTCHA
       window.grecaptcha.render(recaptchaDiv, {
-        sitekey: "6LflDQgsAAAAAG1_KSs42dj8R1bZQ-6Xx-mPTrO4",
+        sitekey: "6LeMNBgsAAAAAF-cI33csG6ZC9_BKo6x-ljo7yZN",
         theme: "light",
         language: "ru",
       });
@@ -2557,7 +2565,7 @@ body.light-off {
 }
 
 .tabs-block__select button.active {
-  background-color: #38be38;
+  background-color: #30b830;
   color: white;
 }
 
@@ -2605,35 +2613,35 @@ body.light-off {
 }
 
 /* Стили для комментариев */
-.contpage__comments {
+.pagecontinue---comments {
   margin-top: 40px;
 }
 .comment-item {
   transition: margin-left 0.3s ease-in-out;
 }
-.comment-form__header {
+.form_for-comment--header {
   gap: 15px;
   margin-bottom: 15px;
 }
 
-.comment-form__input {
+.form_for-comment--input {
   padding: 10px 15px;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
 }
 
-.comment-form__input:focus {
+.form_for-comment--input:focus {
   outline: none;
-  border-color: #38be38;
+  border-color: #30b830;
   box-shadow: 0 0 0 2px rgba(56, 190, 56, 0.2);
 }
 
-.comment-form__editor {
+.form_for-comment--editor {
   margin-bottom: 15px;
 }
 
-.comment-form__editor textarea {
+.form_for-comment--editor textarea {
   width: 100%;
   padding: 15px;
   border: 1px solid #ddd;
@@ -2643,15 +2651,15 @@ body.light-off {
   min-height: 120px;
 }
 
-.comment-form__editor textarea:focus {
+.form_for-comment--editor textarea:focus {
   outline: none;
-  border-color: #38be38;
+  border-color: #30b830;
   box-shadow: 0 0 0 2px rgba(56, 190, 56, 0.2);
 }
 
-.comment-form__btn {
+.form_for-comment--btn {
   padding: 12px 24px;
-  background: #38be38;
+  background: #30b830;
   color: white;
   border: none;
   border-radius: 6px;
@@ -2660,16 +2668,16 @@ body.light-off {
   transition: all 0.2s ease;
 }
 
-.comment-form__btn:hover:not(:disabled) {
+.form_for-comment--btn:hover:not(:disabled) {
   background: #2ea02e;
 }
 
-.comment-form__btn:disabled {
+.form_for-comment--btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.comment-form__actions {
+.form_for-comment--actions {
   display: flex;
   gap: 10px;
 }
@@ -2691,7 +2699,7 @@ body.light-off {
 }
 
 .comment.pos {
-  border-left: 4px solid #38be38;
+  border-left: 4px solid #30b830;
 }
 
 .comment.neg {
@@ -2735,7 +2743,7 @@ body.light-off {
   text-decoration: underline;
 }
 
-.coment__rating {
+.ratingsOnComment {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2748,7 +2756,7 @@ body.light-off {
   color: #333;
 }
 
-.coment__rating-btn {
+.ratingsOnComment-btn {
   cursor: pointer;
   padding: 5px;
   border-radius: 4px;
@@ -2756,18 +2764,18 @@ body.light-off {
   text-decoration: none;
 }
 
-.coment__rating-btn:hover {
+.ratingsOnComment-btn:hover {
   background: #f5f5f5;
 }
 
-.coment__rating-btn.thelike.voted {
+.ratingsOnComment-btn.thelike.voted {
   color: rgb(70, 209, 70);
 }
-.coment__rating-btn.thedislike.voted {
+.ratingsOnComment-btn.thedislike.voted {
   color: #ff6b6b;
 }
 
-.coment__rating-btn.voted .fal {
+.ratingsOnComment-btn.voted .fal {
   transform: scale(1.1);
 }
 
@@ -2784,7 +2792,7 @@ body.light-off {
   text-align: center;
 }
 
-.contpage__comments-info {
+.pagecontinue---comments-info {
   padding: 15px;
   background: #e3f2fd;
   border-radius: 6px;
@@ -2853,7 +2861,7 @@ body.light-off {
   height: 56px;
   border-radius: 50%;
   border: 4px solid rgba(255, 255, 255, 0.14);
-  border-top-color: #38be38;
+  border-top-color: #30b830;
   animation: player-loader-spin 0.9s linear infinite;
 } */
 @keyframes player-loader-spin {
@@ -2861,11 +2869,11 @@ body.light-off {
     transform: rotate(360deg);
   }
 }
-.coment__rating-btn.is-disabled {
+.ratingsOnComment-btn.is-disabled {
   pointer-events: none;
   opacity: 0.6;
 }
-.contpage__main.is-narrow-poster { grid-template-columns: 220px minmax(0, 1fr); }
-@media (min-width: 2000px) { .contpage__main.is-narrow-poster { grid-template-columns: 240px minmax(0, 1fr); } }
+.pagecontinue---main.is-narrow-poster { grid-template-columns: 220px minmax(0, 1fr); }
+@media (min-width: 2000px) { .pagecontinue---main.is-narrow-poster { grid-template-columns: 240px minmax(0, 1fr); } }
 
 </style>

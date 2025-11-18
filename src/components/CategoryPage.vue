@@ -1,7 +1,7 @@
 <template>
   <section class="sect">
-    <div class="sect___header d-flex ai-center r-gap-20 c-gap-20">
-      <h1 class="sect___title flex-1">{{ pageTitle }}</h1>
+    <div class="section--header d-flex ai-center r-gap-20 c-gap-20">
+      <h1 class="section--title flex-1">{{ pageTitle }}</h1>
 
       <div class="filters d-flex c-gap-10">
         <select
@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    <div class="sect___content items-in-grid" id="items-in-grid">
+    <div class="section--content items-in-grid" id="items-in-grid">
       <ItemsChunk
         v-for="(pageItems, idx) in pages"
         :key="`chunk-${idx}`"
@@ -56,7 +56,7 @@
     <div class="pagination ignore-select d-flex jc-center" id="pagination">
       <div
         v-if="hasMoreItems"
-        class="page-nav__btn-loader d-flex jc-center ai-center w-100"
+        class="Pnavigation--btn-loader d-flex jc-center ai-center w-100"
       >
         <a href="#" @click.prevent="loadMore" :class="{ disabled: isLoading }">
           <span class="fal fa-redo"></span>
@@ -64,16 +64,16 @@
         </a>
       </div>
 
-      <div v-if="totalPages > 1" class="page-nav__pages d-flex jc-center">
+      <div v-if="totalPages > 1" class="Pnavigation--pages d-flex jc-center">
         <span
           @click="goToPage(currentPage - 1)"
           v-if="currentPage > 1"
-          class="page-nav__btn"
+          class="Pnavigation--btn"
         >
-          <i class="page-nav__btn--prev fal fa-arrow-left"></i>
+          <i class="Pnavigation--btn--prev fal fa-arrow-left"></i>
         </span>
 
-        <div class="page-nav__pages d-flex jc-center">
+        <div class="Pnavigation--pages d-flex jc-center">
           <span v-for="page in visiblePages" :key="page">
             <span v-if="page === '...'" class="nav_ext">{{ page }}</span>
             <span v-else-if="page === currentPage">{{ page }}</span>
@@ -84,9 +84,9 @@
         <span
           @click="goToPage(currentPage + 1)"
           v-if="currentPage < totalPages"
-          class="page-nav__btn"
+          class="Pnavigation--btn"
         >
-          <i class="page-nav__btn--next fal fa-arrow-right"></i>
+          <i class="Pnavigation--btn--next fal fa-arrow-right"></i>
         </span>
       </div>
     </div>
@@ -278,15 +278,15 @@ function updateCategorySeo() {
   if (q.actor) qual.unshift(`с ${decodeURIComponent(q.actor)}`);
 
   const qualStr = qual.length ? ` ${qual.join(", ")}` : "";
-  const title = `Список всех ${listGen}${qualStr} смотреть онлайн бесплатно в хорошем качестве на ProsmotrZone`;
-  const desc = `Выбирайте для просмотра ${lowerNom}${qualStr} с помощью удобных фильтров и смотрите в HD качестве без регистрации онлайн на ProsmotrZone.`;
+  const title = `Список всех ${listGen}${qualStr} смотреть онлайн бесплатно в хорошем качестве на Lordfilm`;
+  const desc = `Выбирайте для просмотра ${lowerNom}${qualStr} с помощью удобных фильтров и смотрите в HD качестве без регистрации онлайн на Lordfilms.`;
   const usp = new URLSearchParams(window.location.search);
   if ((usp.get("page") || "1") === "1") usp.delete("page");
   if ((usp.get("limit") || "24") === "24") usp.delete("limit");
   if ((usp.get("sort") || "year") === "year") usp.delete("sort");
 
   const url = `${origin}/${cat}${usp.toString() ? `?${usp.toString()}` : ""}`;
-  const logoAbs = `${origin}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+  const logoAbs = `${origin}/assets/NewLord_site/images/logo.svg`;
 
   document.title = title;
   setCanonical(url);
@@ -636,13 +636,13 @@ watch(
   color: #666;
 }
 
-.page-nav__btn-loader a.disabled {
+.Pnavigation--btn-loader a.disabled {
   pointer-events: none;
   opacity: 0.6;
 }
 
 @media (max-width: 600px) {
-  .sect___header {
+  .section--header {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
@@ -684,7 +684,7 @@ watch(
 }
 
 /* Кнопки страниц — в одну строку без переноса */
-.pagination .page-nav__pages.d-flex {
+.pagination .Pnavigation--pages.d-flex {
   flex-wrap: nowrap; /* перекрывает .d-flex { flex-wrap: wrap } */
   white-space: nowrap; /* подстраховка от переноса */
 }
@@ -692,17 +692,17 @@ watch(
 /* Мобильные уточнения: ужимаем размеры, чтобы всё влезало в 1 строку */
 @media (max-width: 600px) {
   /* Кнопка "Загрузить ещё": не даём ей фиксированный min-width из глобальных стилей */
-  .page-nav__btn-loader a {
+  .Pnavigation--btn-loader a {
     min-width: 0;
     width: 100%;
   }
 
   /* Чуть уменьшаем размеры и расстояния у кнопок страниц */
-  .pagination .page-nav__pages {
+  .pagination .Pnavigation--pages {
     gap: 6px;
   }
-  .pagination .page-nav__pages a,
-  .pagination .page-nav__pages span,
+  .pagination .Pnavigation--pages a,
+  .pagination .Pnavigation--pages span,
   .pagination > a,
   .pagination > span {
     min-width: 30px; /* было 36px в глобальных */
@@ -713,11 +713,11 @@ watch(
 
 /* Совсем узкие экраны — ещё компактнее */
 @media (max-width: 380px) {
-  .pagination .page-nav__pages {
+  .pagination .Pnavigation--pages {
     gap: 4px;
   }
-  .pagination .page-nav__pages a,
-  .pagination .page-nav__pages span,
+  .pagination .Pnavigation--pages a,
+  .pagination .Pnavigation--pages span,
   .pagination > a,
   .pagination > span {
     min-width: 28px;
@@ -726,7 +726,7 @@ watch(
   }
 }
 /* Внешний контейнер стрелки+цифры: по центру и с небольшим зазором (десктоп) */
-.pagination > .page-nav__pages.d-flex {
+.pagination > .Pnavigation--pages.d-flex {
   width: 100%;
   box-sizing: border-box;
   flex-wrap: nowrap;
@@ -736,7 +736,7 @@ watch(
 }
 
 /* Средний блок с цифрами: НЕ растёт на десктопе (чтобы стрелки прилегали) */
-.pagination > .page-nav__pages.d-flex > .page-nav__pages.d-flex {
+.pagination > .Pnavigation--pages.d-flex > .Pnavigation--pages.d-flex {
   flex: 0 1 auto; /* десктоп: не растём, допускаем сжатие */
   min-width: 0;
   justify-content: center;
@@ -745,44 +745,44 @@ watch(
 }
 
 /* Стрелки — фикс. ширина, не растягиваются */
-.pagination .page-nav__btn {
+.pagination .Pnavigation--btn {
   flex: 0 0 auto;
 }
 
 /* Мобильные уточнения — сохраняем поведение, чтобы ничего не вылезало */
 @media (max-width: 600px) {
   /* На мобиле — разнос, чтобы гарантированно всё помещалось */
-  .pagination > .page-nav__pages.d-flex {
+  .pagination > .Pnavigation--pages.d-flex {
     justify-content: space-between;
   }
   /* На мобиле цифры могут сжиматься и занимать центр */
-  .pagination > .page-nav__pages.d-flex > .page-nav__pages.d-flex {
+  .pagination > .Pnavigation--pages.d-flex > .Pnavigation--pages.d-flex {
     flex: 1 1 auto; /* мобильное поведение из прошлой правки */
   }
 
-  .page-nav__btn-loader a {
+  .Pnavigation--btn-loader a {
     /* кнопка "Загрузить ещё" — на всю ширину */
     min-width: 0;
     width: 100%;
   }
 
-  .pagination .page-nav__pages {
+  .pagination .Pnavigation--pages {
     gap: 6px;
   }
-  .pagination .page-nav__pages a,
-  .pagination .page-nav__pages span,
+  .pagination .Pnavigation--pages a,
+  .pagination .Pnavigation--pages span,
   .pagination > a,
   .pagination > span {
     min-width: 30px;
     height: 32px;
     font-size: 13px;
   }
-  .pagination .page-nav__btn {
+  .pagination .Pnavigation--btn {
     min-width: 28px;
   }
 }
 
-.pagination .page-nav__btn {
+.pagination .Pnavigation--btn {
   cursor: pointer;
 }
 </style>

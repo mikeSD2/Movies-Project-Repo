@@ -57,7 +57,7 @@ def parse_movie_html(file_path, category):
             movie_data['season'] = None
     
     # Постер
-    poster_img = soup.select_one('.contpage__img img')
+    poster_img = soup.select_one('.pagecontinue---img img')
     if poster_img and poster_img.get('src'):
         src = poster_img['src'].replace('../', '/')
         if not src.startswith('/'):
@@ -76,7 +76,7 @@ def parse_movie_html(file_path, category):
             movie_data['description'] = None
 
     # Парсинг списка с информацией
-    info_list = soup.select_one('.contpage__list')
+    info_list = soup.select_one('.pagecontinue---list')
     if info_list:
         for li in info_list.find_all('li', recursive=False):
             key_span = li.find('span')
@@ -116,14 +116,14 @@ def parse_movie_html(file_path, category):
                 movie_data['actors'] = actors_span.get_text(strip=True) if actors_span else ''
 
     # Рейтинги
-    kp_rating_div = soup.select_one('.contpage__list-rates-item.kp')
+    kp_rating_div = soup.select_one('.pagecontinue---list-rates-item.kp')
     if kp_rating_div:
         try:
             movie_data['kpRating'] = float(kp_rating_div.get_text(strip=True))
         except (ValueError, TypeError):
             movie_data['kpRating'] = None
 
-    imdb_rating_div = soup.select_one('.contpage__list-rates-item.imdb')
+    imdb_rating_div = soup.select_one('.pagecontinue---list-rates-item.imdb')
     if imdb_rating_div:
         try:
             movie_data['imdbRating'] = float(imdb_rating_div.get_text(strip=True))

@@ -46,10 +46,10 @@ Date:   Fri Nov 7 20:43:31 2025 +0300
  append_movies_batch.py                             |     236 [32m+[m
  apply_rewrites_to_movies_json.py                   |      68 [32m+[m
  .../css/styles.css}                                |     566 [32m+[m[31m-[m
- assets/ProsmotrZone_site/images/NewLogo.png        |     Bin [31m0[m -> [32m752940[m bytes
- assets/ProsmotrZone_site/images/NewLogo.webp       |     Bin [31m0[m -> [32m4668[m bytes
- assets/ProsmotrZone_site/images/favicon.ico        |     Bin [31m0[m -> [32m17660[m bytes
- .../ProsmotrZone_site/images/finalBackground.webp  |     Bin [31m0[m -> [32m67024[m bytes
+ assets/NewLord_site/images/logo.png        |     Bin [31m0[m -> [32m752940[m bytes
+ assets/NewLord_site/images/logo.svg       |     Bin [31m0[m -> [32m4668[m bytes
+ assets/NewLord_site/images/favicon.svg        |     Bin [31m0[m -> [32m17660[m bytes
+ .../NewLord_site/images/finalbgbgbg.webp  |     Bin [31m0[m -> [32m67024[m bytes
  .../images/imdb.svg                                |       0
  .../images/kp.svg                                  |       0
  .../otherimages}/chevron-down-light.svg            |       0
@@ -136,18 +136,18 @@ Date:   Fri Nov 7 20:43:31 2025 +0300
  sort_movies.py                                     |      95 [32m+[m
  src/App.vue                                        |     114 [32m+[m[31m-[m
  src/app.js                                         |       5 [32m+[m[31m-[m
- .../assets/ProsmotrZone_site/css/common.css        |     273 [32m+[m[31m-[m
+ .../assets/NewLord_site/css/common.css        |     273 [32m+[m[31m-[m
  .../css/engine.css}                                |     192 [32m+[m[31m-[m
  .../css/fontawesome.css}                           |       4 [32m+[m[31m-[m
  .../css/responsive.css}                            |     104 [32m+[m[31m-[m
  .../css/styles.css}                                |     570 [32m+[m[31m-[m
- src/assets/ProsmotrZone_site/images/NewLogo.png    |     Bin [31m0[m -> [32m744790[m bytes
- src/assets/ProsmotrZone_site/images/NewLogo.webp   |     Bin [31m0[m -> [32m4668[m bytes
- .../ProsmotrZone_site/images/NewLogoSquare.png     |     Bin [31m0[m -> [32m745013[m bytes
- .../images/ProsmotrZoneLogoImage.png               |     Bin [31m0[m -> [32m224210[m bytes
- src/assets/ProsmotrZone_site/images/favicon.ico    |     Bin [31m0[m -> [32m17660[m bytes
+ src/assets/NewLord_site/images/logo.png    |     Bin [31m0[m -> [32m744790[m bytes
+ src/assets/NewLord_site/images/logo.svg   |     Bin [31m0[m -> [32m4668[m bytes
+ .../NewLord_site/images/logoSquare.png     |     Bin [31m0[m -> [32m745013[m bytes
+ .../images/LordfilmLogoImage.png               |     Bin [31m0[m -> [32m224210[m bytes
+ src/assets/NewLord_site/images/favicon.svg    |     Bin [31m0[m -> [32m17660[m bytes
  .../images/finalBackground-big.png                 |     Bin [31m0[m -> [32m5975404[m bytes
- .../ProsmotrZone_site/images/finalBackground.webp  |     Bin [31m0[m -> [32m67024[m bytes
+ .../NewLord_site/images/finalbgbgbg.webp  |     Bin [31m0[m -> [32m67024[m bytes
  .../images/imdb.svg                                |       0
  .../images/kp.svg                                  |       0
  .../otherimages}/chevron-down-light.svg            |       0

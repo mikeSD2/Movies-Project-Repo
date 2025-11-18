@@ -34,6 +34,16 @@ YOUTUBE_ID_RE = re.compile(r"(?:youtube\\.com/(?:watch\\?v=|embed/|shorts/)|yout
 BOTTOM_OUTER_MARGIN_Y = 40  # space between bottom of video and bottom band
 BOTTOM_FONT_SIZE = None     # if None, reuse title font size
 
+# Global toggles for background-only/visibility
+BG_ONLY = False
+NO_FOREGROUND = False
+NO_TEXT = False
+# Show semi-transparent bands behind texts
+SHOW_BANDS = False
+# Background styling defaults
+BG_BRIGHTNESS = -0.12  # darker is negative (e.g., -0.25)
+BG_CONTRAST = 1.0
+BG_BLUR = 0.0  # gaussian blur sigma (e.g., 10-20)
 
 def youtube_id_from_any(value: Optional[str]) -> Optional[str]:
     if not value:
@@ -163,22 +173,22 @@ def make_vertical_short(src_path: str, dst_path: str, overwrite: bool = False, t
     bottom_band_h = 140
     bottom_outer_margin_y = BOTTOM_OUTER_MARGIN_Y
 
-    # Build filter chain. Use filter_complex to keep it explicit.
-    vf_parts = [
+    # Build foreground (content) chain and separate text overlays
+    fg_parts = [
         "crop=iw*0.7:ih:iw*0.15:0",     # remove 15% left+right
-        # Fit the cropped video strictly into full canvas height; bands are drawn as overlays and do not affect centering
+        # Scale content to fit inside target while preserving AR; no padding here (we'll overlay centered on BG)
         f"scale={target_w}:{max(1, target_h)}:force_original_aspect_ratio=decrease",
-        # Center the video within the full canvas strictly (ignore bands for centering)
-        f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2:black",
     ]
+    text_parts = []
 
     # Draw a full-width (with side margins) semi-transparent band at the top for the title
     if title_text:
-        # Background band (top)
-        drawbox = (
-            f"drawbox=x={title_margin_x}:y=0:w={target_w - 2*title_margin_x}:h={title_band_h}:color={box_color}:t=fill"
-        )
-        vf_parts.append(drawbox)
+        # Optional background band (top)
+        if SHOW_BANDS:
+            drawbox = (
+                f"drawbox=x={title_margin_x}:y=0:w={target_w - 2*title_margin_x}:h={title_band_h}:color={box_color}:t=fill"
+            )
+            text_parts.append(drawbox)
         font_clause = f":fontfile='{_escape_drawtext_path(font_file)}'" if font_file else ""
 
         # If we have multiple lines, render each as its own drawtext, so each line is horizontally centered individually
@@ -205,7 +215,7 @@ def make_vertical_short(src_path: str, dst_path: str, overwrite: bool = False, t
                     f"{font_clause}:x={x_expr}:y={y_expr}:fontsize={font_size}:fontcolor={font_color}:"
                     f"box=0:boxcolor={box_color}:boxborderw={box_borderw}"
                 )
-                vf_parts.append(drawtext)
+                text_parts.append(drawtext)
         else:
             # Single-line textfile or text
             # choose horizontal x by alignment
@@ -229,7 +239,7 @@ def make_vertical_short(src_path: str, dst_path: str, overwrite: bool = False, t
                     f"{font_clause}:x={x_expr}:y=(({title_band_h})-th)/2+{title_y}:fontsize={font_size}:fontcolor={font_color}:"
                     f"box=0:boxcolor={box_color}:boxborderw={box_borderw}"
                 )
-            vf_parts.append(drawtext)
+            text_parts.append(drawtext)
 
     # Bottom call-to-action band and text
     bottom_text = "Смотрите полностью по ссылке в описании!!"
@@ -239,10 +249,11 @@ def make_vertical_short(src_path: str, dst_path: str, overwrite: bool = False, t
     bottom_text_margin_y = 12         # inner text inset from the band's top/bottom
     # Draw bottom band (full width minus side margins), anchored to bottom of the frame
     bottom_y0 = target_h - bottom_band_h - bottom_outer_margin_y
-    drawbox_bottom = (
-        f"drawbox=x={bottom_margin_x}:y={bottom_y0}:w={target_w - 2*bottom_margin_x}:h={bottom_band_h}:color={box_color}:t=fill"
-    )
-    vf_parts.append(drawbox_bottom)
+    if SHOW_BANDS:
+        drawbox_bottom = (
+            f"drawbox=x={bottom_margin_x}:y={bottom_y0}:w={target_w - 2*bottom_margin_x}:h={bottom_band_h}:color={box_color}:t=fill"
+        )
+        text_parts.append(drawbox_bottom)
     # Wrap bottom text to avoid clipping and center each line inside inner insets
     inner_w = target_w - 2 * (bottom_margin_x + bottom_text_margin_x)
     approx_chars_fit_bottom = max(1, int(inner_w / max(1, font_size * 0.6)))
@@ -273,14 +284,64 @@ def make_vertical_short(src_path: str, dst_path: str, overwrite: bool = False, t
         drawtext_b = (
             f"drawtext=text='{tt_b}'"
             f"{font_clause if 'font_clause' in locals() else ''}:x={x_expr_b}:y={y_expr_b}:fontsize={bfsize}:fontcolor={font_color}:"
-            f"box=0:boxcolor={box_color}:boxborderw={box_borderw}:fix_bounds=1"
+            f"box=0:boxcolor={box_color}:boxborderw=0:fix_bounds=1"
         )
-        vf_parts.append(drawtext_b)
+        text_parts.append(drawtext_b)
 
-    vf = ",".join(vf_parts)
+    fg_chain = ",".join(fg_parts)
+    texts_chain = ",".join(text_parts) if text_parts else None
+
+    # Build background + foreground pipeline using filter_complex
+    # Background: same trailer scaled to fill the 9:16 frame and slightly darkened/blurred
+    bg_brightness = BG_BRIGHTNESS
+    bg_contrast = BG_CONTRAST
+    bg_blur_sigma = BG_BLUR  # set >0 to add subtle blur, e.g., 10-20
+    bg_chain = f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h},eq=brightness={bg_brightness}:contrast={bg_contrast}"
+    if bg_blur_sigma and bg_blur_sigma > 0:
+        bg_chain += f",gblur=sigma={bg_blur_sigma}"
+
+    # Apply NO_TEXT/NO_FOREGROUND toggles
+    final_texts_chain = texts_chain if not NO_TEXT else None
+    final_fg_chain = fg_chain if not NO_FOREGROUND else None
+
+    if BG_ONLY:
+        # Background only for debugging
+        filter_complex = (
+            f"[0:v]{bg_chain}[outv]"
+        )
+    else:
+        if final_fg_chain:
+            if final_texts_chain:
+                # Compose BG + FG first, then draw texts on the full frame to keep positions as before
+                filter_complex = (
+                    f"[0:v]split=2[vbg][vsrc];"
+                    f"[vbg]{bg_chain}[bg];"
+                    f"[vsrc]{final_fg_chain}[fg];"
+                    f"[bg][fg]overlay=(W-w)/2:(H-h)/2[base];"
+                    f"[base]{final_texts_chain}[outv]"
+                )
+            else:
+                filter_complex = (
+                    f"[0:v]split=2[vbg][vsrc];"
+                    f"[vbg]{bg_chain}[bg];"
+                    f"[vsrc]{final_fg_chain}[fg];"
+                    f"[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]"
+                )
+        else:
+            # no foreground, only background; optionally add texts over background
+            if final_texts_chain:
+                filter_complex = (
+                    f"[0:v]{bg_chain}[base];"
+                    f"[base]{final_texts_chain}[outv]"
+                )
+            else:
+                filter_complex = (
+                    f"[0:v]{bg_chain}[outv]"
+                )
 
     cmd = [ffmpeg_bin, "-y" if overwrite else "-n", "-i", src_path,
-           "-vf", vf,
+           "-filter_complex", filter_complex,
+           "-map", "[outv]", "-map", "0:a?",
            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "19",
            "-c:a", "aac", "-b:a", "128k"]
 
@@ -464,13 +525,32 @@ def main():
     # Bottom caption options
     ap.add_argument("--bottom-outer-margin-y", type=int, default=40, help="Extra space between bottom of video and bottom band (default: 40)")
     ap.add_argument("--bottom-font-size", type=int, default=None, help="Font size for bottom caption (default: same as title-font-size)")
+    # Debug/toggles
+    ap.add_argument("--bg-only", action="store_true", help="Render only the background layer (for debugging)")
+    ap.add_argument("--no-foreground", action="store_true", help="Hide the foreground (cropped content)")
+    ap.add_argument("--no-text", action="store_true", help="Hide all text overlays")
+    ap.add_argument("--show-bands", action="store_true", help="Show semi-transparent bands behind title and bottom text")
+    # Background tuning
+    ap.add_argument("--bg-brightness", type=float, default=None, help="Background brightness (negative to darken, e.g., -0.25)")
+    ap.add_argument("--bg-contrast", type=float, default=None, help="Background contrast (e.g., 1.0)")
+    ap.add_argument("--bg-blur", type=float, default=None, help="Background Gaussian blur sigma (e.g., 15)")
 
     args = ap.parse_args()
 
     # Expose bottom options via globals used in make_vertical_short
-    global BOTTOM_OUTER_MARGIN_Y, BOTTOM_FONT_SIZE
+    global BOTTOM_OUTER_MARGIN_Y, BOTTOM_FONT_SIZE, BG_ONLY, NO_FOREGROUND, NO_TEXT, SHOW_BANDS, BG_BRIGHTNESS, BG_CONTRAST, BG_BLUR
     BOTTOM_OUTER_MARGIN_Y = args.bottom_outer_margin_y
     BOTTOM_FONT_SIZE = args.bottom_font_size
+    BG_ONLY = args.bg_only
+    NO_FOREGROUND = args.no_foreground
+    NO_TEXT = args.no_text
+    SHOW_BANDS = args.show_bands
+    if args.bg_brightness is not None:
+        BG_BRIGHTNESS = args.bg_brightness
+    if args.bg_contrast is not None:
+        BG_CONTRAST = args.bg_contrast
+    if args.bg_blur is not None:
+        BG_BLUR = args.bg_blur
 
     process_ndjson(
         ndjson_path=args.ndjson,

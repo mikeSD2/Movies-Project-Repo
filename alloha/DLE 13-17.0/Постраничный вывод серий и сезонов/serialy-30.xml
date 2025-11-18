@@ -773,14 +773,14 @@ echofooter();
 			<searchcode><![CDATA[if (intval($category_id)){]]></searchcode>
 			<replacecode><![CDATA[	if (defined('SEASON') && SEASON) {
 
-		$s_navigation .= "{$config['speedbar_separator']}<span itemprop=\"itemListElement\" itemscope itemtype=\"https://schema.org/ListItem\"><meta itemprop=\"position\" content=\"2\"><a href=\"" . $full_link . "\" itemprop=\"item\"><span itemprop=\"name\">" . TITLE . "</span></a></span>{$config['speedbar_separator']}";
+		$s_navigation .= "{$config['panel-of-speed_separator']}<span itemprop=\"itemListElement\" itemscope itemtype=\"https://schema.org/ListItem\"><meta itemprop=\"position\" content=\"2\"><a href=\"" . $full_link . "\" itemprop=\"item\"><span itemprop=\"name\">" . TITLE . "</span></a></span>{$config['panel-of-speed_separator']}";
 		
 		$full_link = preg_replace('#\.html$#', '', $full_link);
 		
 		$titl_e = '';
 
 		if (defined('EPISODE') && EPISODE) {
-			$s_navigation .= '<span itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><meta itemprop="position" content="3"><a href="'.$full_link.'/'.SEASON.'-season.html" itemprop="item"><span itemprop="name">'.SEASON.' сезон</span></a></span>'.$config['speedbar_separator'].EPISODE.' серия';
+			$s_navigation .= '<span itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><meta itemprop="position" content="3"><a href="'.$full_link.'/'.SEASON.'-season.html" itemprop="item"><span itemprop="name">'.SEASON.' сезон</span></a></span>'.$config['panel-of-speed_separator'].EPISODE.' серия';
 		}
 		else {
 			$s_navigation .= SEASON." сезон";

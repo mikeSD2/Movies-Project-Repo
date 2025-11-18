@@ -2,7 +2,10 @@
   <!-- Карусель популярных -->
   <div class="carou">
     <div class="carou__caption">Популярные за месяц</div>
-    <div class="carou__content carousel-grid" id="top-carou" ref="carousel">
+    <div class="unique-kicker" style="font-size:12px;opacity:.75;margin:6px 0 0;">
+      Мини-примечание: карусель формируется автоматически по популярности за последние 30 дней.
+    </div>
+    <div class="carou__content karuselMy-grid" id="top-carou" ref="carousel">
       <MovieCard
         v-for="(movie, idx) in popularMovies"
         :key="movie.id"
@@ -14,14 +17,14 @@
 
   <!-- Секция фильмов -->
   <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/filmy"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Фильмы</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': moviesTab === 'latest' }"
           @click="moviesTab = 'latest'"
@@ -46,7 +49,8 @@
         </button>
       </div>
     </div>
-    <div class="sect___content items-in-grid">
+    <!-- homepage:movies-tabs seed:2a -->
+    <div class="section--content items-in-grid">
       <MovieCard
         v-for="(movie, idx) in displayedMovies"
         :key="movie.id"
@@ -58,14 +62,14 @@
 
   <!-- Секция сериалов -->
   <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/serialy"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Сериалы</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': seriesTab === 'latest' }"
           @click="seriesTab = 'latest'"
@@ -91,7 +95,7 @@
       </div>
     </div>
     <div ref="seriesSentinel" class="lazy-sentinel" aria-hidden="true"></div>
-    <div class="sect___content items-in-grid" v-if="seriesVisible">
+    <div class="section--content items-in-grid" v-if="seriesVisible">
       <MovieCard
         v-for="(series, idx) in displayedSeries"
         :key="series.id"
@@ -103,14 +107,14 @@
 
   <!-- Секция мультфильмов -->
   <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/multfilmy"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Мультфильмы</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': cartoonsTab === 'latest' }"
           @click="cartoonsTab = 'latest'"
@@ -136,7 +140,7 @@
       </div>
     </div>
     <div ref="cartoonsSentinel" class="lazy-sentinel" aria-hidden="true"></div>
-    <div class="sect___content items-in-grid" v-if="cartoonsVisible">
+    <div class="section--content items-in-grid" v-if="cartoonsVisible">
       <MovieCard
         v-for="(cartoon, idx) in displayedCartoons"
         :key="cartoon.id"
@@ -148,14 +152,14 @@
 
   <!-- Секция аниме -->
   <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/anime"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Аниме</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': animeTab === 'latest' }"
           @click="animeTab = 'latest'"
@@ -180,8 +184,9 @@
         </button>
       </div>
     </div>
+    <!-- homepage:anime-note seed:9f -->
     <div ref="animeSentinel" class="lazy-sentinel" aria-hidden="true"></div>
-    <div class="sect___content items-in-grid" v-if="animeVisible">
+    <div class="section--content items-in-grid" v-if="animeVisible">
       <MovieCard
         v-for="(anime, idx) in displayedAnime"
         :key="anime.id"
@@ -193,14 +198,14 @@
 
   <!-- Секция дорам -->
   <!-- <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/serialy?special=doramas"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Дорамы</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': doramasTab === 'latest' }"
           @click="doramasTab = 'latest'"
@@ -226,7 +231,7 @@
       </div>
     </div>
     <div ref="doramasSentinel" class="lazy-sentinel" aria-hidden="true"></div>
-    <div class="sect___content items-in-grid" v-if="doramasVisible">
+    <div class="section--content items-in-grid" v-if="doramasVisible">
       <MovieCard
         v-for="dorama in displayedDoramas"
         :key="dorama.id"
@@ -237,14 +242,14 @@
 
   <!-- Секция турецких сериалов -->
   <!-- <section class="sect">
-    <div class="sect___header d-flex ai-center c-gap-20">
+    <div class="section--header d-flex ai-center c-gap-20">
       <router-link
         to="/serialy?special=turkish"
-        class="sect___title fal fa-chevron-right fa-pull-right btn"
+        class="section--title fal fa-chevron-right fa-pull-right btn"
       >
         <h2>Турецкие сериалы</h2>
       </router-link>
-      <div class="sect___tabs d-flex c-gap-10">
+      <div class="section--tabs d-flex c-gap-10">
         <button
           :class="{ 'is-active': turkishTab === 'latest' }"
           @click="turkishTab = 'latest'"
@@ -270,7 +275,7 @@
       </div>
     </div>
     <div ref="turkishSentinel" class="lazy-sentinel" aria-hidden="true"></div>
-    <div class="sect___content items-in-grid" v-if="turkishVisible">
+    <div class="section--content items-in-grid" v-if="turkishVisible">
       <MovieCard v-for="ts in displayedTurkish" :key="ts.id" :movie="ts" />
     </div>
   </section> -->
@@ -278,82 +283,151 @@
   <!-- Описание сайта -->
   <section class="descr">
     <h1>
-      Ваш персональный доступ в мир кино: смотрите фильмы и сериалы онлайн в
-      отличном качестве
+      Лордфилм — ваш онлайн-кинотеатр: смотрите фильмы и сериалы бесплатно в
+      хорошем качестве
     </h1>
+
     <p>
-      Выдался тяжелый день? Иногда все, чего хочется, — это просто выдохнуть и
-      включить что-то по-настоящему захватывающее. Для этого мы и работаем. Наш
-      онлайн-кинотеатр — это ваш личный портал в тысячи кинопроизведений, причем
-      бесплатно и без регистрации.
+      Устали после долгого дня? Лучший способ перезагрузиться — погрузиться в
+      другую реальность. Наш <strong>онлайн-кинотеатр</strong> создан именно для
+      этого. Мы предлагаем вам уровень комфорта и ассортимент, достойный
+      <strong>Лордфилм</strong>, — это ваш личный портал в мир тысяч
+      кинопроизведений, где можно
+      <strong>смотреть фильмы онлайн бесплатно и без регистрации</strong>.
     </p>
+
+    <h2>Кинозал, который всегда с вами</h2>
     <p>
-      Забудьте о расписаниях и очередях в кассу. Теперь только вы решаете, когда
-      начнется сеанс. Просто выбирайте и начинайте смотреть фильмы онлайн в
-      любое время, всегда в хорошем качестве. Ваш кинозал открыт круглосуточно:
-      вас ждет четкая картинка HD 1080p (или 720p для быстрой загрузки) и чистый
-      звук в русской озвучке. А многие новинки кино у нас уже доступны в 4K.
+      Забудьте о привязке к расписанию сеансов. Здесь вы сами управляете
+      временем. Включайте <strong>фильмы онлайн</strong> тогда, когда удобно
+      именно вам, и наслаждайтесь просмотром
+      <strong>в хорошем качестве</strong>.
     </p>
-    <h2>Огромная коллекция: от вечной классики до хитов 2024 и 2025 годов</h2>
-    <p>
-      Мы правда гордимся своей коллекцией. Наша главная задача — сделать так,
-      чтобы каждый нашел что-то для души.
-    </p>
-    <p>
-      В каталоге есть всё: как популярные зарубежные фильмы, так и душевные
-      сериалы и фильмы. Мы собрали лучшие фильмы и сериалы всех эпох. Мы держим
-      руку на пульсе, поэтому у нас вы всегда найдете самые громкие новинки кино
-      2023, 2024 и даже ожидаемые хиты 2025 года. И конечно, мы не забыли про
-      мультфильмы для всей семьи и захватывающее аниме.
-    </p>
-    <p>Наша гигантская коллекция охватывает все жанры:</p>
+
     <ul>
-      <li>Напряженные боевики и триллеры, от которых стынет кровь.</li>
-      <li>Глубокие драмы и мелодрамы, чтобы по-настоящему сопереживать.</li>
-      <li>Жуткие ужасы и легкие, искрометные комедии.</li>
-      <li>Потрясающие миры фантастики и волшебного фэнтези.</li>
       <li>
-        Запутанные детективы, масштабное историческое кино, вестерны, военные
-        фильмы — выбор огромен.
+        <strong>Картинка:</strong> Вас ждет кристально чистое изображение
+        <strong>HD 1080p</strong> (или <strong>720p</strong> для экономии
+        трафика).
+      </li>
+      <li>
+        <strong>Технологии:</strong> Многие <strong>новинки кино</strong> уже
+        доступны в формате <strong>4K</strong>.
+      </li>
+      <li>
+        <strong>Звук:</strong> Чистый звук, <strong>русская озвучка</strong> и
+        профессиональный дубляж обеспечат полное погружение.
       </li>
     </ul>
-    <h2>Смотрите кино где угодно: на телефоне, планшете и Smart TV</h2>
+
     <p>
-      Смотрите там, где вам удобно. Мы позаботились, чтобы наш онлайн-кинотеатр
-      "летал" на любых устройствах. Вы можете смотреть фильмы на телефоне (будь
-      то Android или iPhone), планшете (iPad) или вывести картинку на Smart TV.
-      Комфорт просмотра — как на ПК.
+      Наш сервис работает по стандартам качества <strong>lordfilms</strong>,
+      предлагая мгновенную загрузку и стабильный плеер.
+    </p>
+
+    <h2>Глобальная коллекция: от классики до хитов 2024 и 2025</h2>
+    <p>
+      Мы гордимся нашей библиотекой, которая постоянно растет. В каталоге
+      собрано всё: культовые <strong>зарубежные фильмы</strong>, душевные
+      отечественные ленты и <strong>лучшие фильмы и сериалы</strong> всех
+      времен.
+    </p>
+    <p>Мы держим руку на пульсе индустрии, чтобы вы могли смотреть:</p>
+    <ul>
+      <li>
+        Самые громкие <strong>новинки кино 2023</strong> и
+        <strong>2024</strong> годов.
+      </li>
+      <li>
+        Эксклюзивные премьеры и ожидаемые блокбастеры
+        <strong>2025 года</strong>.
+      </li>
+      <li>Популярные <strong>мультфильмы</strong> для детей и взрослых.</li>
+      <li>Захватывающее <strong>аниме</strong> разных жанров.</li>
+    </ul>
+
+    <p><strong>Навигация по жанрам удовлетворит любой вкус:</strong></p>
+    <ul>
+      <li>
+        Любите адреналин? Включайте <strong>боевики</strong> и
+        <strong>триллеры</strong>, от которых захватывает дух.
+      </li>
+      <li>
+        Хотите эмоций? Для вас глубокие <strong>драмы</strong> и трогательные
+        <strong>мелодрамы</strong>.
+      </li>
+      <li>
+        Нужно расслабиться? Легкие <strong>комедии</strong> поднимут настроение,
+        а <strong>ужасы</strong> пощекочут нервы.
+      </li>
+      <li>
+        Мечтаете о других мирах? Разделы <strong>фантастики</strong> и
+        <strong>фэнтези</strong> открыты для вас.
+      </li>
+      <li>
+        Также в наличии: запутанные <strong>детективы</strong>, эпическое
+        <strong>историческое кино</strong>, суровые <strong>вестерны</strong> и
+        <strong>военные фильмы</strong>.
+      </li>
+    </ul>
+
+    <h2>Смотрите кино где угодно: Смарт ТВ, телефон или планшет</h2>
+    <p>
+      Наш сайт оптимизирован так, чтобы работать идеально на любом устройстве,
+      как и привычный многим <strong>lordfilm</strong>.
+    </p>
+
+    <ul>
+      <li>
+        <strong>На телефоне:</strong> Комфортный просмотр на
+        <strong>Android</strong> и <strong>iPhone</strong>.
+      </li>
+      <li>
+        <strong>На планшете:</strong> Идеальная адаптация для
+        <strong>iPad</strong> и других устройств.
+      </li>
+      <li>
+        <strong>На большом экране:</strong> Выводите картинку на
+        <strong>Smart TV</strong> и наслаждайтесь домашним кинотеатром.
+      </li>
+    </ul>
+
+    <p>
+      Вам больше не нужно скачивать файлы и занимать память гаджетов. Достаточно
+      доступа в интернет, чтобы <strong>смотреть кино онлайн</strong> в любом
+      браузере — дома, в дороге или в отпуске.
+    </p>
+
+    <h2>Свежие релизы, передовая озвучка и удобный поиск</h2>
+    <p>
+      Как только в сети появляется цифровой релиз (WEB-DL или
+      <strong>Blu-ray</strong>), он моментально оказывается у нас. Мы оперативно
+      добавляем версии с <strong>хорошим переводом</strong> и
+      <strong>профессиональной озвучкой</strong>.
     </p>
     <p>
-      Дома, в дороге или в отпуске — любимое кино всегда с вами. Нужен только
-      интернет. Больше не придется скачивать фильмы и забивать память
-      устройства. Весь контент ждет вас для просмотра онлайн в любом браузере.
-      Все работает быстро и без задержек.
+      Найти, что посмотреть вечером, проще простого. Используйте умные фильтры
+      по годам, странам и жанрам. А если глаза разбегаются — доверьтесь нашим
+      подборкам:
     </p>
-    <h2>Свежие новинки и отличный перевод</h2>
+
+    <ul>
+      <li><strong>Топ фильмов</strong> по рейтингу зрителей.</li>
+      <li><strong>Лучшие сериалы</strong> сезона.</li>
+      <li><strong>Топ мультфильмов</strong> и <strong>топ аниме</strong>.</li>
+    </ul>
+
     <p>
-      Хотите смотреть новинки первыми? Мы тоже. Наша команда отслеживает мировые
-      премьеры и моментально добавляет свежие релизы. Как только появляется
-      цифровой релиз, мы сразу обновляем качество до идеального (Blu-ray) и
-      заливаем версии с хорошим переводом и профессиональной озвучкой. Наш сайт
-      — это живой каталог, который пополняется каждый день.
+      Система рекомендаций, работающая не хуже, чем на
+      <strong>Лордфилм</strong>, предложит вам контент на основе ваших
+      предпочтений.
     </p>
-    <h2>Простой поиск и личные подборки</h2>
+
     <p>
-      Найти нужное кино — проще простого. Мы сделали интуитивную навигацию и
-      удобные фильтры по жанрам, годам и странам.
-    </p>
-    <p>
-      А если не знаете, что выбрать, загляните в наши тематические подборки и
-      топы. Мы постоянно собираем «топ фильмов», «лучшие сериалы», «топ
-      мультфильмов» или «топ аниме». Система рекомендаций тоже не дремлет: она
-      подкинет вам что-то новое и захватывающее, основываясь на том, что вы уже
-      посмотрели.
-    </p>
-    <p>
-      Так что заходите, начинайте смотреть кино онлайн бесплатно и без
-      регистрации, выбирайте лучшие фильмы 2024 года и зовите друзей.
-      Погружайтесь в мир кино вместе с нами!
+      <strong>Заходите прямо сейчас!</strong> Начинайте
+      <strong>смотреть кино онлайн бесплатно</strong>, оцените
+      <strong>лучшие фильмы 2024 года</strong> и зовите друзей. Приятного
+      просмотра!
     </p>
   </section>
 </template>
@@ -744,11 +818,11 @@ onMounted(() => {
   }
 
   const origin = window.location.origin;
-  const logoAbs = `${origin}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+  const logoAbs = `${origin}/assets/NewLord_site/images/logo.svg`;
   const title =
-    "ProsmotrZone - смотреть фильмы и сериалы в HD качестве онлайн бесплатно";
+    "Lordfilm — смотреть новинки фильмов 2025 и сериалы онлайн бесплатно в HD 1080";
   const desc =
-    "На ProsmotrZone вас ждут новые фильмы, сериалы и аниме онлайн. Смотрите премьеры 2025 года, классику, рейтинговые хиты и новинки. Здесь вы можете смотреть без регистрации бесплатно в HD (720p, 1080p) без лишней рекламы. Удобный поиск и фильтры по жанрам, актёрам, годам и другим параметрам. Можете смотреть с любого устройства в любое время дня.";
+    "Ищете, где посмотреть кино? На Лордфилм вас ждут свежие хиты 2025, популярные сериалы и мультфильмы в хорошем качестве. Удобный плеер позволяет смотреть онлайн без регистрации и тормозов в Full HD 720 или 1080. Находите контент по жанрам и актерам за пару кликов. Доступно круглосуточно на любом устройстве бесплатно.";
   document.title = title;
   setCanonical(origin + "/");
   setMeta("robots", "index,follow");

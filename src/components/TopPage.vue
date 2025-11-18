@@ -2,8 +2,8 @@
 <template>
   <div class="items-in-grid count-items">
     <section class="sect ignore-select">
-      <div class="sect___header d-flex ai-center">
-        <h1 class="sect___title flex-1">
+      <div class="section--header d-flex ai-center">
+        <h1 class="section--title flex-1">
           {{ h1Title }}
         </h1>
         <div class="filters d-flex c-gap-10" style="margin-left: auto">
@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <div class="sect___content items-in-grid">
+      <div class="section--content items-in-grid">
         <MovieCard v-for="movie in filtered" :key="movie.id" :movie="movie" />
         <div v-if="loading && filtered.length === 0" class="tops__loader">
           Загрузка…
@@ -31,7 +31,7 @@
       </div>
 
       <div class="pagination ignore-select d-flex jc-center" v-if="hasMore()">
-        <div class="page-nav__btn-loader d-flex jc-center ai-center w-100">
+        <div class="Pnavigation--btn-loader d-flex jc-center ai-center w-100">
           <a
             href="#"
             @click.prevent="!loading && loadMore()"
@@ -85,13 +85,13 @@ const h1Title = computed(() =>
 function updateTopSeo() {
   if (typeof window === "undefined") return;
   const origin = window.location.origin;
-  const logoAbs = `${origin}/assets/ProsmotrZone_site/images/NewLogo.webp`;
+  const logoAbs = `${origin}/assets/NewLord_site/images/logo.svg`;
   const title =
     topType.value === "all"
-      ? "Топ всех фильмов и сериалов на ProsmotrZone. Выбирайте и смотрите!"
-      : `Топ: ${typeLabel.value} — ProsmotrZone`;
+      ? "Топ всех фильмов и сериалов на Lordfilm. Выбирайте и смотрите!"
+      : `Топ: ${typeLabel.value} — Lordfilm`;
   const desc =
-    "Лучшие фильмы и сериалы по рейтингу IMDb и Кинопоиск на ProsmotrZone. Выбирайте и смотрите онлайн бесплатно в HD.";
+    "Лучшие фильмы и сериалы по рейтингу IMDb и Кинопоиск на Lordfilms. Выбирайте и смотрите онлайн бесплатно в HD.";
   document.title = title;
   setCanonical(origin + "/top-all-time"); // canonical фиксированный
   setMeta("robots", "index,follow");
@@ -143,12 +143,12 @@ onMounted(updateTopSeo);
   color: #666;
   font-size: 16px;
 }
-.page-nav__btn-loader a.disabled {
+.Pnavigation--btn-loader a.disabled {
   pointer-events: none;
   opacity: 0.6;
 }
 @media (max-width: 600px) {
-  .sect___header {
+  .section--header {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;

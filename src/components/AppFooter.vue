@@ -2,15 +2,15 @@
   <footer class="footer">
     <div class="site-footer__one d-flex ai-center jc-center r-gap-20 c-gap-20">
       <div class="site-footer__logo logo">
-        Prosmotr<span>Zone</span>
+        LordFilms
       </div>
       <div class="site-footer__notify mr-auto">
-        <p>Внимание! Все материалы на этом сайте предназначены исключительно для личного, некоммерческого использования и ознакомления.</p>
-        <p>По вопросам, связанным с авторскими правами, пишите на: prosmotrzone_ab@proton.me</p>
+        <p>Внимание! Весь контент на сайте предназначен только для ознакомления или личного, некоммерческого использования.</p>
+        <p>Касательно авторских прав, пишите нам на почту: ab_of_content@proton.me</p>
       </div>
     </div>
-    <div class="site-site-footer__bottom d-flex ai-center jc-center r-gap-20 c-gap-20">
-      <div class="site-footer__copyright mr-auto">Смотри фильмы и сериалы на ProsmotrZone.online</div>
+    <div class="mywebsite-footer_bottom d-flex ai-center jc-center r-gap-20 c-gap-20">
+      <div class="site-footer__copyright mr-auto">Смотри лучшие фильмы и сериалы на kino.lordfilmshd-2026.ru</div>
     </div>
   </footer>
 </template>

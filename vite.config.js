@@ -18,14 +18,14 @@ export default defineConfig({
         /^owl-/, /^fa-/, /^fal/, /^far/, /^fas/, /^fab/,
         /data-v-.*/,                 // не вырезать scoped‑селекторы
         // сетки:
-        /^items-in-grid/, /^items-in-grid__item$/, /^sect___content$/,
+        /^items-in-grid/, /^items-in-grid__item$/, /^section--content$/,
         // фильтры в CategoryPage:
-        /^filters$/, /^filter-select$/, /^sect___header$/,
+        /^filters$/, /^filter-select$/, /^section--header$/,
         /^d-flex$/, /^ai-center$/, /^r-gap-20$/, /^c-gap-10$/,
         // плеер MoviePage:
         /^sv-container$/, /^video-responsive$/, /^video-inside$/, /^adaptive-player$/,
         /^player-pane$/, /^player-loader$/, /^player-loader__spinner$/,
-        /^contpage__player-.*/, /^tabs-block__content$/
+        /^pagecontinue---player-.*/, /^tabs-block__content$/
       ],
     }),
   ],

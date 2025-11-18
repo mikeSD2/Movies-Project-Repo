@@ -1,19 +1,19 @@
 <template>
-  <!-- Overlay -->
+  <!-- Оверлей -->
   <div 
     v-if="isVisible" 
     class="overlay"
     @click="closeMobileMenu"
   ></div>
   
-  <!-- Mobile Menu -->
+  <!-- Mobile -->
   <div 
     class="mobile-menu"
     :class="{ 'is-active mobile-menu--is-generated': isVisible }"
   >
     <div class="mobile-menu___header d-flex ai-center">
-      <router-link to="/" class="nav-bar___logo logo mr-auto">
-        Prosmotr<span>Zone</span>
+      <router-link to="/" class="navigation_panel__logo logo mr-auto">
+        LordFilms
       </router-link>
       <button 
         class="mobile-menu___btn-close btn-nobg btn-square fal fa-times" 
@@ -23,71 +23,71 @@
     </div>
     
     <div class="mobile-menu___content">
-      <!-- Поиск -->
+      <!-- Search -->
       <div class="header__search search-panel flex-1" style="margin-bottom: 20px;">
         <form class="js-search-form" method="post" @submit.prevent="performSearch">
           <input type="hidden" name="do" value="search">
           <input type="hidden" name="subaction" value="search">
           <input 
-            class="srchpanel__input input-bigger" 
+            class="my_searchpanel_input input-bigger" 
             name="story" 
             placeholder="Поиск по сайту..." 
             type="text" 
             autocomplete="off"
             v-model="searchQuery"
           >
-          <button class="srchpanel__btn btn-nobg btn-square fal fa-search" aria-label="Искать" type="submit"></button>
+          <button class="my_searchpanel_btn btn-nobg btn-square fal fa-search" aria-label="Искать" type="submit"></button>
         </form>
       </div>
-      <!-- Навигация -->
-      <ul class="nav-bar___nav d-flex c-gap-20" @click.capture="onNavClick">
+      <!-- Nav -->
+      <ul class="navigation_panel__nav d-flex c-gap-20" @click.capture="onNavClick">
       <li>
         <a href="#" @click.prevent>Фильмы</a>
-        <div class="nav-bar___nav-hidden anim">
-            <ul class="nav-bar___nav-hidden-col">
-              <li><router-link to="/filmy" @click="closeMobileMenu">Все</router-link></li>
+        <div class="navigation_panel__nav-hidden anim">
+            <ul class="navigation_panel__nav-hidden-col">
+              <li><router-link to="/filmy">Все</router-link></li>
               <li>По году:</li>
-              <li><router-link to="/filmy?year=2025" @click="closeMobileMenu">2025</router-link></li>
-              <li><router-link to="/filmy?year=2024" @click="closeMobileMenu">2024</router-link></li>
-              <li><router-link to="/filmy?year=2023" @click="closeMobileMenu">2023</router-link></li>
+              <li><router-link to="/filmy?year=2025">2025</router-link></li>
+              <li><router-link to="/filmy?year=2024">2024</router-link></li>
+              <li><router-link to="/filmy?year=2023">2023</router-link></li>
             </ul>
-            <ul class="nav-bar___nav-hidden-col">
+            <ul class="navigation_panel__nav-hidden-col">
               <li>По жанрам:</li>
-              <li><router-link to="/filmy?genre=Биография">Биографические</router-link></li>
-              <li><router-link to="/filmy?genre=Вестерн">Вестерны</router-link></li>
-              <li><router-link to="/filmy?genre=Военный">Военные</router-link></li>
               <li><router-link to="/filmy?genre=Боевик">Боевики</router-link></li>
               <li><router-link to="/filmy?genre=Драма">Драмы</router-link></li>
               <li><router-link to="/filmy?genre=История">Исторические</router-link></li>
-              <li><router-link to="/filmy?genre=Документальный">Документальные</router-link></li>
+              <li><router-link to="/filmy?genre=Вестерн">Вестерны</router-link></li>
+              <li><router-link to="/filmy?genre=Биография">Биографические</router-link></li>
+              <li><router-link to="/filmy?genre=Военный">Военные</router-link></li>
               <li><router-link to="/filmy?genre=Детектив">Детективы</router-link></li>
+              <li><router-link to="/filmy?genre=Криминал">Криминал</router-link></li>
               <li><router-link to="/filmy?genre=Семейный">Детские</router-link></li>
               <li><router-link to="/filmy?genre=Комедия">Комедии</router-link></li>
             </ul>
-            <ul class="nav-bar___nav-hidden-col">
-              <li><router-link to="/filmy?genre=Фэнтези">Фэнтези</router-link></li>
-              <li><router-link to="/filmy?genre=Криминал">Криминал</router-link></li>
-              <li><router-link to="/filmy?genre=Спорт">Спорт</router-link></li>
-              <li><router-link to="/filmy?genre=Триллер">Триллеры</router-link></li>
-              <li><router-link to="/filmy?genre=Мелодрама">Мелодрамы</router-link></li>
-              <li><router-link to="/filmy?genre=Приключения">Приключения</router-link></li>
-              <li><router-link to="/filmy?genre=Фантастика">Фантастика</router-link></li>
-              <li><router-link to="/filmy?genre=Семейный">Семейные</router-link></li>
-              <li><router-link to="/filmy?genre=Ужасы">Ужасы</router-link></li>
+            <ul class="navigation_panel__nav-hidden-col">
+            <li><router-link to="/filmy?genre=Документальный">Документальные</router-link></li>
+            <li><router-link to="/filmy?genre=Мелодрама">Мелодрамы</router-link></li>
+            <li><router-link to="/filmy?genre=Приключения">Приключения</router-link></li>
+            <li><router-link to="/filmy?genre=Семейный">Семейные</router-link></li>
+            <li><router-link to="/filmy?genre=Фэнтези">Фэнтези</router-link></li>
+            <li><router-link to="/filmy?genre=Спорт">Спорт</router-link></li>
+            <li><router-link to="/filmy?genre=Триллер">Триллеры</router-link></li>
+            <li><router-link to="/filmy?genre=Ужасы">Ужасы</router-link></li>
+            <li><router-link to="/filmy?genre=Фантастика">Фантастика</router-link></li>
             </ul>
           </div>
         </li>
         <li>
           <a href="#" @click.prevent>Сериалы</a>
-          <div class="nav-bar___nav-hidden anim">
-            <ul class="nav-bar___nav-hidden-col">
-              <li><router-link to="/serialy" @click="closeMobileMenu">Все</router-link></li>
+          <div class="navigation_panel__nav-hidden anim">
+            <ul class="navigation_panel__nav-hidden-col">
+              <li><router-link to="/serialy">Все</router-link></li>
               <li>По году:</li>
-              <li><router-link to="/serialy?year=2023" @click="closeMobileMenu">2023</router-link></li>
-              <li><router-link to="/serialy?year=2024" @click="closeMobileMenu">2024</router-link></li>
-              <li><router-link to="/serialy?year=2025" @click="closeMobileMenu">2025</router-link></li>
+              <li><router-link to="/serialy?year=2025">2025</router-link></li>
+              <li><router-link to="/serialy?year=2024">2024</router-link></li>
+              <li><router-link to="/serialy?year=2023">2023</router-link></li>
             </ul>
-            <ul class="nav-bar___nav-hidden-col">
+            <ul class="navigation_panel__nav-hidden-col">
               <li>По жанрам:</li>
               <li><router-link to="/serialy?special=turkish">Турецкие сериалы</router-link></li>
               <li><router-link to="/serialy?special=doramas">Дорамы</router-link></li>
@@ -100,7 +100,7 @@
               <li><router-link to="/serialy?genre=Детектив">Детективные</router-link></li>
               <li><router-link to="/serialy?genre=Семейный">Детские</router-link></li>
             </ul>
-            <ul class="nav-bar___nav-hidden-col">
+            <ul class="navigation_panel__nav-hidden-col">
               <li><router-link to="/serialy?genre=Комедия">Комедии</router-link></li>
               <li><router-link to="/serialy?genre=История">Исторические</router-link></li>
               <li><router-link to="/serialy?genre=Криминал">Криминал</router-link></li>
@@ -116,10 +116,9 @@
             </ul>
           </div>
         </li>
-        <li><router-link to="/multfilmy" @click="closeMobileMenu">Мультфильмы</router-link></li>
-        <li><router-link to="/anime" @click="closeMobileMenu">Аниме</router-link></li>
-        <li><router-link to="/novinki" @click="closeMobileMenu">Новинки</router-link></li>
-        <li><router-link to="/top-all-time" @click="closeMobileMenu">Топ</router-link></li>
+        <li><router-link to="/multfilmy">Мультфильмы</router-link></li>
+        <li><router-link to="/anime">Аниме</router-link></li>
+        <li><router-link to="/top-100">Топ-100</router-link></li>
       </ul>
       
     </div>
